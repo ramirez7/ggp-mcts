@@ -146,28 +146,34 @@ Assuming that last & is a typo...
 
 In core.logic, multiple goals listed is the equivalent of an AND:
 
-   (fresh [x y] 
-     (== x 1) 
-     (== y 2))
+```Clojure
+(fresh [x y] 
+  (== x 1) 
+  (== y 2))
+```
 
 --> Succeeds if x == 1 AND y == 2
 
 And a conde is the equivalent of an OR:
 
-   (fresh [x y]
-     (conde
-       [(== x 1)]
-       [(== y 2)]))
+```Clojure
+(fresh [x y]
+  (conde
+    [(== x 1)]
+    [(== y 2)]))
+```
 
 --> Succeeds if x == 1 OR y == 2
 
 This can be used to translate diagonal to core.logic easily:
 
-   (defn diagonalo [x]
-     (conde
-       [(trueo [:cell [1 1 x]])
-        (trueo [:cell [2 2 x]])
-        (trueo [:cell [3 3 x]])]
-       [(trueo [:cell [1 3 x]])
-        (trueo [:cell [2 2 x]])
-        (trueo [:cell [3 1 x]])]))
+```Clojure
+(defn diagonalo [x]
+  (conde
+    [(trueo [:cell [1 1 x]])
+     (trueo [:cell [2 2 x]])
+     (trueo [:cell [3 3 x]])]
+    [(trueo [:cell [1 3 x]])
+     (trueo [:cell [2 2 x]])
+     (trueo [:cell [3 1 x]])]))
+```
