@@ -6,7 +6,12 @@
 
 ...
 
-## Todo
+## Progress
+
+### Completed
+* Tic-Tac-Toe GDL successfuly translated to core.logic
+
+### Todo
 * Write Tic-Tac-Toe as Clojure functions
 * Write MCTS algorithm
 * Write MCTS algorithm "factory"
@@ -32,7 +37,7 @@
 
 ## License
 
-Copyright © 2013 FIXME
+Copyright © 2013 Armando Ramirez
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
