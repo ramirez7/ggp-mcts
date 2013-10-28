@@ -135,6 +135,7 @@ Here's an example:
       true(cell(3,1,X)) &
 
 Assuming that last & is a typo...
+
     diagonal(X) :-
       (true(cell(1,1,X)) &
        true(cell(2,2,X)) &
@@ -144,22 +145,29 @@ Assuming that last & is a typo...
        true(cell(3,1,X)))
 
 In core.logic, multiple goals listed is the equivalent of an AND:
-(fresh [x y] 
-  (== x 1) 
-  (== y 2))
+
+   (fresh [x y] 
+     (== x 1) 
+     (== y 2))
 
 --> Succeeds if x == 1 AND y == 2
 
 And a conde is the equivalent of an OR:
-(fresh [x y]
-  (conde
-    [(== x 1)]
-    [(== y 2)]))
+
+   (fresh [x y]
+     (conde
+       [(== x 1)]
+       [(== y 2)]))
 
 --> Succeeds if x == 1 OR y == 2
 
-This could POSSIBLY be used to map diagonal to:
+This can be used to translate diagonal to core.logic easily:
 
-(defn diagonal [state player]
-  (conde
-   [(== player (state
+   (defn diagonalo [x]
+     (conde
+       [(trueo [:cell [1 1 x]])
+        (trueo [:cell [2 2 x]])
+        (trueo [:cell [3 3 x]])]
+       [(trueo [:cell [1 3 x]])
+        (trueo [:cell [2 2 x]])
+        (trueo [:cell [3 1 x]])]))
