@@ -203,13 +203,13 @@
 ;;terminal means that the current state is a terminal state.
 (defn openo [env]
   (fresh [m n]
-         ((get-relation env :true) [:cell [m n :b]])))
+    ((get-relation env :true) [:cell [m n :b]])))
 
 (defn terminalo [env]
   (fresh [w]
-         (conde
-          [((get-relation env :line) w)]
-          [(nafc openo)])));; nafc is experimental!!
+    (conde
+      [((get-relation env :line) w)]
+      [(nafc (get-relation env :open))])));; nafc is experimental!!
 
 ;; environment built from the above relations
 (def ttt-env
