@@ -23,6 +23,8 @@
 (defn get-function [env name]
   (get-binding env [:functions name]))
 
+;;; ---------------------------------------------------------------------------
+
 ;;; Relation->Function transformers
 ;;; TODO: COMMENT ALL THIS MORE AND EXPLAIN THOROUGHLY
 ;;; moves is a map with keys as player names, and values of their moves
@@ -32,9 +34,9 @@
 (defn update-does [env moves]
   (let [next-does (list 'fn ['env 'r 'a] 
                         (concat '(conde) ;;DIRTY. backtick lib would help
-                                (map (fn [kv]
-                                       [(list '== 'r (kv 0))
-                                        (list '== 'a (kv 1))])
+                                (map (fn [[k v]]
+                                       [(list '== 'r k)
+                                        (list '== 'a v)])
                                      moves)))]
     (assoc-in env [:relations :does] (eval next-does))))
 
@@ -73,8 +75,8 @@
 
   ([k1 v1] [k2 v2] ..) -> {k1 v1, k2 v2, ..}"
   [als]
-  (reduce (fn [m v]
-            (assoc m (v 0) (v 1))) {} als))
+  (reduce (fn [m [k v]]
+            (assoc m k v)) {} als))
 
 (defn gen-children
   "Returns a list of all possible next-states, as
@@ -118,6 +120,23 @@
                       ((get-relation env :goal) p q))))]
     (zipmap players (map score players))))
 
+;;; Early cut-off helpers
+(defn mean
+  "Calculates the mean of all members of a collection."
+  [coll]
+  (/ (reduce + coll) (count coll)))
+
+(defn variance
+  "Calculates the variance of all members of a collection."
+  [coll]
+  (let [u (mean coll)]
+    (/ (reduce + 
+            (map 
+             (fn [n]
+               (* (- n u) (- n u)))
+             coll))
+       (count coll))))
+
 (defn playout
   "playout randomly plays a game from the state in env until
   it terminates and returns the results"
@@ -126,5 +145,65 @@
     (get-scores env)
     (recur (rand-nth (gen-children env)))))
 
+;;; ---------------------------------------------------------------------------
+
 ;;; Monte-Carlo Tree Search
-;;; <NOTES>
+;;; NOTES:
+;;; I'm using randomcomputation's Clojure MCTS as reference:
+;;; http://randomcomputation.blogspot.com/2013/01/
+;;; monte-carlo-tree-search-in-clojure.html
+;;;
+;;; However, because I'm aiming to make it more general, there
+;;; are definitely some other considerations and changes to be made.
+
+
+(def example-statistics
+  {#{:whatever} {:scores {:x 200, :o 0 :f 20}
+                 :visits 2
+                 :children '(CHILDREN)}})
+
+;;; For now, this is just an average.
+;;; It's returned in the same format as playout and get-scores
+;;; TODO: Implement UCT
+(defn mcts-value [stats]
+  (zipmap (keys (stats :scores)) 
+          (map (fn [n] 
+                 (/ n (stats :visits)))
+               (vals (stats :scores)))))
+
+
+;;; ARGS:
+;;; RET: map of results
+(defn mcts-sample [ARGS]
+  'TODO)
+
+;;; ARGS:
+;;; RET: move OR state (not sure yet)
+;;;      (Will need to keep track of moves somehow)
+;;;      (state is likely the best choice here. Leaves moves to top level)
+;;;      (state will probably need to be put into env with update-true)
+(defn mcts-select [ARGS]
+  'TODO)
+
+;;; ARGS:
+;;; RET: list of unexplored states (probably as sets/lists of props)
+;;;      (state will probably need to be put into env with update-true)
+(defn mcts-unexplored [ARGS]
+  'TODO)
+
+;;; ARGS:
+;;; RET:
+(defn mcts-add-child [ARGS]
+  'TODO)
+
+;;; ARGS: 
+;;; RET: 
+(defn mcts-grow [ARGS]
+  'TODO)
+
+;;; ARGS:
+;;; RET: statistics (I think)
+(defn mcts-iteration [ARGS]
+  'TODO)
+
+;; MORE
