@@ -4,6 +4,12 @@
   (use [clojure.core.match :only (match)])
   (:require [clojure.core.logic.fd :as fd]))
 
+;; Memory leak?
+;; http://eigenjoy.com/2011/03/02/
+;; clojures-keyword-can-fill-up-your-permgen-space/
+;; Out of permgen space...
+;; maybe it has to do with me calling eval/redefining lambdas?
+
 ;;; This file will house the top-level functions needed for the user to
 ;;; create a Monte-Carlo Search Tree function for their game as described in
 ;;; one of three ways:
@@ -264,14 +270,16 @@
 (defn mcts-backprop [path result stats]
   (if (empty? path)
     stats
-    (let [factor (if (terminal? (first path)) 10 1) ;;DIRTY
+    (let [factor (if (terminal? (first path)) 1 1) ;;DIRTY
           state (get-state (first path))
           prev-scores ((get-stats (first path) stats) :scores)
           next-scores (zipmap 
                        (keys prev-scores) 
                        (map (fn [k]
                               (let [s (if (= (result k) (apply max (vals result)))
-                                         ;; makes terminal winner "stick out"
+                                        ;; makes terminal winner "stick out"
+                                        ;; IS THIS ACTUALLY OKAY THOUGH?
+                                        ;; COULD THERE BE A DOWNSIDE/BAD BIAS?
                                         (* factor (result k))
                                         (result k))]
                               (+ (prev-scores k)
@@ -395,3 +403,29 @@ it to the tree, and backpropagates the value up the path."
 
 ;; I suspect there's a space leak somewhere.
 ;; REPL randomly runs out of memory? hm
+
+;;; play-game 
+;;; players must be ternary functions with args [env player budget]
+;;; and return a move
+;;; the play-game function then update the state according to moves
+;;;
+;;; Right now, it's just 2-players to test TicTacToe.
+;;; TODO: Make it with n-player games
+;;;
+;;; It also prints
+(defn play-game [env player1 player2 budget]
+  (let [x-player (fn [env] (player1 env :x budget))
+        o-player (fn [env] (player2 env :o budget))]
+    (loop [env env turn 0]
+      (do
+        (printf "Turn %s\n" turn)
+        (pprint (run* [q] ((get-relation env :true) q)))
+        (if (terminal? env)
+          (get-scores env)
+          (recur (update-true env
+                              {:x (x-player env)
+                               :o (o-player env)})
+                 (inc turn)))))))
+        
+(defn random-move [env player _]
+  (rand-nth (run* [q] ((get-relation env :legal) player q))))
