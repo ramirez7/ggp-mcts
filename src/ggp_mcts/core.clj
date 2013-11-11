@@ -254,21 +254,29 @@
     (if (< n 1) result
         (recur (zipmap
                 (keys result) 
-                (map + (vals result) (vals (playout env))))
+                (map (fn [k]
+                       (+ ((playout env) k) (result k)))
+                     (keys result)))
+;                (map + (vals result) (vals (playout env))))
                (dec n)))))
 
 ;;; path is a list of environments
 (defn mcts-backprop [path result stats]
   (if (empty? path)
     stats
-    (let [state (get-state (first path))
+    (let [factor (if (terminal? (first path)) 10 1) ;;DIRTY
+          state (get-state (first path))
           prev-scores ((get-stats (first path) stats) :scores)
           next-scores (zipmap 
                        (keys prev-scores) 
                        (map (fn [k]
-                              (+ (prev-scores k) (result k)))
+                              (let [s (if (= (result k) (apply max (vals result)))
+                                         ;; makes terminal winner "stick out"
+                                        (* factor (result k))
+                                        (result k))]
+                              (+ (prev-scores k)
+                                 s)))
                             (keys prev-scores)))]
-;                       (map + (vals prev-scores) (vals next-scores)))]
       (recur (rest path) result 
              (-> stats
                  (assoc-in [state :scores] next-scores)
@@ -318,7 +326,7 @@
 (defn mcts-grow [stats path]
   (let [leaf (first path)
         child (rand-nth (mcts-unexplored leaf stats))
-        result (mcts-sample leaf 1)]
+        result (mcts-sample child 1)]
     (->> stats
          (mcts-add-child child)
          (mcts-backprop (cons child path) result))))
@@ -384,3 +392,6 @@ it to the tree, and backpropagates the value up the path."
           (let [ch (uct-select mem state)]
             (recur mem ch (cons ch path)))))))
 ;; MORE
+
+;; I suspect there's a space leak somewhere.
+;; REPL randomly runs out of memory? hm
