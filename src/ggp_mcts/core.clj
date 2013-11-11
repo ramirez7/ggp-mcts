@@ -150,6 +150,8 @@
         all-combos (map alist->map legal-combos)]
     (map (partial update-true env) all-combos)))
 
+
+
 ;;NOTES on gen-children
 ;;players is a list of all players
 ;;gen-legal is a function that generates all legal moves for player p
@@ -219,48 +221,166 @@
                  :visits 2
                  :children '(CHILDREN)}})
 
+
+(defn initial-stats [env]
+  (let [players (run* [q] ((get-relation env :role) q))
+        scores (zipmap players (repeat (count players) 0))]
+    {:scores scores
+     :visits 0
+     :children (gen-children env)}))
+        
+;;; Returns the "state" (as a set, which can be used in the 
+;;; statistics map as a key)
+(defn get-state [env]
+  (set (run* [q] ((get-relation env :true) q))))
+
+;;; Gets the statistics map of the current environment
+(defn get-stats [env stats]
+    (get stats (get-state env) (initial-stats env)))
+
 ;;; For now, this is just an average.
 ;;; It's returned in the same format as playout and get-scores
 ;;; TODO: Implement UCT
 (defn mcts-value [stats]
-  (zipmap (keys (stats :scores)) 
+  (zipmap (keys (stats :scores))
           (map (fn [n] 
                  (/ n (stats :visits)))
                (vals (stats :scores)))))
 
-
 ;;; ARGS:
 ;;; RET: map of results
-(defn mcts-sample [ARGS]
-  'TODO)
+(defn mcts-sample [env n]
+  (loop [result ((initial-stats env) :scores) n n]
+    (if (< n 1) result
+        (recur (zipmap
+                (keys result) 
+                (map + (vals result) (vals (playout env))))
+               (dec n)))))
+
+;;; path is a list of environments
+(defn mcts-backprop [path result stats]
+  (if (empty? path)
+    stats
+    (let [state (get-state (first path))
+          prev-scores ((get-stats (first path) stats) :scores)
+          next-scores (zipmap 
+                       (keys prev-scores) 
+                       (map (fn [k]
+                              (+ (prev-scores k) (result k)))
+                            (keys prev-scores)))]
+;                       (map + (vals prev-scores) (vals next-scores)))]
+      (recur (rest path) result 
+             (-> stats
+                 (assoc-in [state :scores] next-scores)
+                 (update-in [state :visits] inc))))))
 
 ;;; ARGS:
 ;;; RET: move OR state (not sure yet)
 ;;;      (Will need to keep track of moves somehow)
 ;;;      (state is likely the best choice here. Leaves moves to top level)
 ;;;      (state will probably need to be put into env with update-true)
-(defn mcts-select [ARGS]
-  'TODO)
+;;; 
+;;;  This is the only function that cares about whose turn it is.
+(defn mcts-select [env stats player]
+  (let [state (get-state env)
+        children (get-in stats [state :children])
+        explored (remove
+                 #(zero? ((get-stats % stats) :visits))
+                 children)]
+    (if (empty? explored)
+      (rand-nth children)
+      (apply max-key #((mcts-value (get-stats % stats)) player) explored))))
 
 ;;; ARGS:
 ;;; RET: list of unexplored states (probably as sets/lists of props)
 ;;;      (state will probably need to be put into env with update-true)
-(defn mcts-unexplored [ARGS]
-  'TODO)
+(defn mcts-unexplored [env stats]
+  (let [state (get-state env)
+        children (get-in stats [state :children] (gen-children env))
+        unexplored? (fn [cenv]
+                      (= 0 (get-in stats [(get-state cenv) :visits] 0)))]
+    (filter unexplored? children)))
+    
 
+;;; Adds state in env to stats
+;;; Initializes child notes for the stat
+;;; If the state is already in stats, it remains untouched
+;;; (it won't reset to initial)
 ;;; ARGS:
 ;;; RET:
-(defn mcts-add-child [ARGS]
-  'TODO)
+(defn mcts-add-child [env stats]
+  (let [state (get-state env)
+        child-stats (get stats state (initial-stats env))]
+    (assoc stats state child-stats)))
 
 ;;; ARGS: 
 ;;; RET: 
-(defn mcts-grow [ARGS]
-  'TODO)
+(defn mcts-grow [stats path]
+  (let [leaf (first path)
+        child (rand-nth (mcts-unexplored leaf stats))
+        result (mcts-sample leaf 1)]
+    (->> stats
+         (mcts-add-child child)
+         (mcts-backprop (cons child path) result))))
 
 ;;; ARGS:
 ;;; RET: statistics (I think)
-(defn mcts-iteration [ARGS]
-  'TODO)
+(defn mcts-iteration [env stats player]
+  (loop [env env, stats stats, path (list env)]
+    (if (terminal? env)
+      (mcts-backprop path (get-scores env) stats)
+      (if (not-empty (mcts-unexplored env stats))
+        (mcts-grow stats path)
+        (let [ch (mcts-select env stats player)]
+          (recur ch stats (cons ch path)))))))
 
+(defn mcts-algorithm [env player budget]
+  (loop [env env
+         stats {(get-state env) (initial-stats env)}
+         budget budget]
+    (if (< budget 1) stats
+        (recur env (mcts-iteration env stats player) (dec budget)))))
+
+(defn find-move [env next-env player]
+  (let [players (run* [q] ((get-relation env :role) q))
+        gen-legal (fn [p]
+                    (run* [q]
+                          ((get-relation env :legal) p q)))
+        legal-moves (zipmap players (map gen-legal players))
+        legal-combos (run* [q]
+                           (comboo (keys legal-moves) (vals legal-moves) q))
+        all-combos (map alist->map legal-combos)
+        found-combo (take 1 (filter (fn [c]
+                                      (= (get-state (update-true env c))
+                                         (get-state next-env)))
+                                    all-combos))]
+    ((first found-combo) player)))
+
+(defn child-scores [env budget player]
+  (let [stats (mcts-algorithm env player budget)]
+    (map (fn [e]
+           [(terminal? e) (get-scores e)
+            (find-move env e player)
+            (get-in stats [(get-state e) :visits])
+            (get-in stats [(get-state e) :scores])])
+         (gen-children env))))
+             
+
+(defn best-move [env player budget]
+  (find-move
+   env (mcts-select
+        env (mcts-algorithm env player budget) player) player))
+
+
+#_(defn learn-iteration [mem state]
+    "The core algorithm; a single analysis of a state. Searches the tree
+for an unexplored child, estimates the child's value, adds
+it to the tree, and backpropagates the value up the path."
+    (loop [mem mem, state state, path (list state)]
+      (if-let [result (ttt-terminal? state)]
+        (uct-backprop mem path result)
+        (if (not-empty (uct-unexplored mem state))
+          (uct-grow mem path)
+          (let [ch (uct-select mem state)]
+            (recur mem ch (cons ch path)))))))
 ;; MORE
