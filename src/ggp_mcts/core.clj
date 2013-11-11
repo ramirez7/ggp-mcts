@@ -1,6 +1,7 @@
 (ns ggp-mcts.core
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic])
+  (use [clojure.core.match :only (match)])
   (:require [clojure.core.logic.fd :as fd]))
 
 ;;; This file will house the top-level functions needed for the user to
@@ -9,6 +10,62 @@
 ;;; - Game Description Language
 ;;; - core.logic relations
 ;;; - Clojure functions
+
+;;; Example GDL relation
+;;; Legal from Tic-Tac-Toe
+(def ttt-gdl-legal
+  '((<= (legal ?w (mark ?x ?y))
+        (true (cell ?x ?y b))
+        (true (control ?w)))
+    (<= (legal white noop)
+        (true (control black)))
+    (<= (legal black noop)
+        (true (control white)))))
+
+
+;;; Some ways to write clojure code
+(def test-fn-list
+  (list 'fn ['a 'b] 
+        (list 'conde 
+              [(list '== 'a 1)] 
+              [(list '== 'b 2)])))
+
+(def test-fn-quasi
+  (let [fn-sym 'fn
+        args ['a 'b]
+        conde-sym 'conde
+        conde-clauses (list [`(~'== ~(args 0) 1)]
+                            [`(~'== ~(args 1) 2)])]
+    `(~fn-sym ~args (~conde-sym ~@conde-clauses))))
+
+(defn test-match [e title]
+  (match [(vec e)]
+    [[title & args]] args
+    [[rator & args]] (list args rator)))
+
+;;This also works and has less in let:
+;;  `(~'fn ~args (~'conde ~@conde-clauses))
+
+;;; GDL->Relation transformers
+(defn fresh-var? [e]
+  (and (symbol? e)
+       (= \? (first (name e)))))
+
+(defn find-fresh-vars [clause]
+  (vec (distinct (filter fresh-var? (flatten clause)))))
+
+;;; Assumes arg is either symbol or list of symbols
+;;; Transforms lists into vecs so core.logic can do cool stuff with them
+(defn transform-arg [relation-name arg]
+  (if (list? arg)
+    (vec arg)
+    arg))
+   
+(defn transform-relation [relation-name relation-args relation]
+  'TODO)
+
+(defn transform-clause [relation-name relation-args clause]
+  'TODO)
 
 ;;; Environment methods
 ;;; An environment is a map of the following form:
@@ -117,7 +174,7 @@
         score (fn [p]
                 (first 
                  (run 1 [q]
-                      ((get-relation env :goal) p q))))]
+                   ((get-relation env :goal) p q))))]
     (zipmap players (map score players))))
 
 ;;; Early cut-off helpers
@@ -131,10 +188,10 @@
   [coll]
   (let [u (mean coll)]
     (/ (reduce + 
-            (map 
-             (fn [n]
-               (* (- n u) (- n u)))
-             coll))
+               (map 
+                (fn [n]
+                  (* (- n u) (- n u)))
+                coll))
        (count coll))))
 
 (defn playout
