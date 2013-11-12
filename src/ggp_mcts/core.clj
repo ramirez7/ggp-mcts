@@ -1,8 +1,9 @@
 (ns ggp-mcts.core
   (:refer-clojure :exclude [==])
   (:use [clojure.core.logic])
-  (use [clojure.core.match :only (match)])
-  (:require [clojure.core.logic.fd :as fd]))
+  (:use [clojure.core.match :only (match)])
+  (:require [clojure.core.logic.fd :as fd])
+  (:require clojure.pprint))
 
 ;; Memory leak?
 ;; http://eigenjoy.com/2011/03/02/
@@ -62,16 +63,151 @@
 
 ;;; Assumes arg is either symbol or list of symbols
 ;;; Transforms lists into vecs so core.logic can do cool stuff with them
-(defn transform-arg [relation-name arg]
+;;; Leaves fresh-variables as symbols
+;;; If it isn't a fresh variable, 
+(defn transform-arg [arg]
   (if (list? arg)
-    (vec arg)
-    arg))
-   
-(defn transform-relation [relation-name relation-args relation]
-  'TODO)
+    (vec
+     (map (fn [a]
+            (if (fresh-var? a)
+              a
+              (keyword (str a)))) arg))
+    (if (fresh-var? arg)
+      arg
+      (keyword (str arg)))))
 
-(defn transform-clause [relation-name relation-args clause]
-  'TODO)
+;;; Takes a GDL relation and returns a *list* of core.logic
+;;; relations that correspond to it. "Head" relations correspond
+;;; to lists of (== a b) unifications. Other relations refer to
+;;; calling external relations, which requires an environment.
+#_(defn transform-call [caller-name [env & caller-args] call]
+  (if (not (list? call))
+    '()
+    (let [a-not-call? (= :not (keyword (str (first call))))
+          callee-name (if a-not-call?
+                        (if (symbol? (second call))
+                          (keyword (str (second call)))
+                          (keyword (str (first (second call)))))
+                        (keyword (str (first call))))
+          callee-args (if a-not-call?
+                        (if (symbol? (second call))
+                          '()
+                          (map transform-arg (rest (second call))))
+                        (map transform-arg (rest call)))
+          transform-head (fn [p v] `(~'== ~p ~v))
+          env-call `(~'get-relation ~env ~callee-name)]
+      (if a-not-call? ;;handle nots -~-> nafc
+        `(~'nafc ~env-call ~@callee-args)
+        (if (= caller-name callee-name)
+          (map transform-head caller-args callee-args)
+          (list `(~env-call ~@callee-args)))))))
+      
+
+(defn transform-call [caller-name [env & caller-args] call]
+  (let [clean-call (if (list? call) (vec call) call)
+        clean-name (symbol (apply str (rest (str caller-name))))]
+    (match [clean-call]
+      [[(r :guard symbol?)]] '()
+      [['not (r :guard symbol?)]]
+      (list `(~'nafc (~'get-relation ~env ~r)))
+      [['not (r :guard list?)]] 
+      (list `(~'nafc (~'get-relation ~env ~(first r)) ~@(rest r)))
+      [[clean-name & args]]
+      (map (fn [p v] `(~'== ~p ~v))
+           caller-args
+           (map transform-arg args))
+      [[callee-name & args]]
+      (list `((~'get-relation ~env ~(keyword (str callee-name))) 
+              ~@(map transform-arg args))))))
+
+
+(defn transform-clause [caller-name caller-args clause]
+  [`(~'fresh ~(find-fresh-vars clause)
+              ~@(mapcat (partial transform-call caller-name caller-args)
+                         (filter #(not= % '<=) clause)))])
+  
+(defn transform-relation [relation-name relation-args relation]
+  (let [clauses (map (partial transform-clause
+                              relation-name
+                              relation-args) relation)]
+    `(~'fn ~relation-args (~'conde ~@clauses))))
+
+;;; This is verbatim what
+;;; (transform-relation :legal ['env 'r 'm] ttt-gdl-legal) created.
+;;;
+;;; And it works! (I had to make a special environment in which
+;;; propositions were structured as below though)
+(def ttt-gdl-legal-transformed
+  (fn [env r m]
+    (conde 
+      [(fresh [?w ?x ?y] 
+         (== r ?w) 
+         (== m [:mark ?x ?y]) 
+         ((get-relation env :true) [:cell ?x ?y :b]) 
+         ((get-relation env :true) [:control ?w]))]
+      [(fresh [] 
+         (== r :white) 
+         (== m :noop) 
+         ((get-relation env :true) [:control :black]))] 
+      [(fresh [] 
+         (== r :black) 
+         (== m :noop) 
+         ((get-relation env :true) [:control :white]))])))
+
+(def initial-env
+  {:relations
+   {:distinct distincto}})
+
+;; TODO: use core.match instead of these nested ifs
+
+(defn find-relation-name [relation]
+  (if (= (first relation) '<=)
+    (if (symbol? (second relation))
+      (keyword (str (second relation)))
+      (keyword (str (first (second relation)))))
+    (keyword (str (first relation)))))
+
+(defn gen-relation-args [relation]
+  (let [relation-args (if (= (first relation) '<=)
+                        (if (symbol? (second relation))
+                          []
+                          (repeatedly (count (rest (second relation))) gensym))
+                        (repeatedly (count (rest relation)) gensym))]
+    (vec (cons 'env relation-args))))
+
+      
+;;; description is a list of GDL relations in prefix notation
+(defn collect-relations [description]
+  (let [collector (fn [m r]
+                    (-> m
+                        (update-in
+                         [(find-relation-name r) :body]
+                         (fn [old new]
+                           (if old (cons new old) (cons new '())))
+                         r)
+                        (update-in
+                         [(find-relation-name r) :args]
+                          (fn [old new]
+                            (if old old (gen-relation-args new)))
+                          r)))]
+    (reduce collector {} description)))
+
+(defn map-map [f m]
+  (reduce (fn [m [k v]]
+            (assoc m k (f v))) {} m))
+
+(defn create-environment [description]
+  (reduce
+   (fn [m [relation-name {args :args body :body}]]
+     (assoc m relation-name (transform-relation relation-name args body)))
+     {}
+     (collect-relations description)))
+
+;;; Notes:
+;;; distinct is in GDL. It maps directly to distincto
+;;; It'd probably be easiest to just map a key :distinct to distincto in the env
+;;;
+;;; (not (rator args)) -~-> (nafc (get-relation env rator) & args)
 
 ;;; Environment methods
 ;;; An environment is a map of the following form:
@@ -116,21 +252,21 @@
   [env moves]
   (let [next-state (distinct 
                     (run* [q] 
-                      ((get-relation (update-does env moves) :next) q)))]
+                          ((get-relation (update-does env moves) :next) q)))]
     (assoc-in env [:relations :true] (create-true next-state))))
 
 ;;; minikanren is great for permutations etc
 (defn comboo [pls mls c]
   (conde
-    [(emptyo pls)
-     (emptyo mls)
-     (== c '())]
-    [(fresh [pa pd ma md choice res]
-       (conso pa pd pls)
-       (conso ma md mls)
-       (membero choice ma)
-       (conso [pa choice] res c)
-       (comboo pd md res))]))
+   [(emptyo pls)
+    (emptyo mls)
+    (== c '())]
+   [(fresh [pa pd ma md choice res]
+           (conso pa pd pls)
+           (conso ma md mls)
+           (membero choice ma)
+           (conso [pa choice] res c)
+           (comboo pd md res))]))
 
 (defn alist->map
   "Converts association list als to a clojure map.
@@ -149,10 +285,10 @@
   (let [players (run* [q] ((get-relation env :role) q))
         gen-legal (fn [p] 
                     (run* [q]
-                      ((get-relation env :legal) p q)))
+                          ((get-relation env :legal) p q)))
         legal-moves (zipmap players (map gen-legal players))
         legal-combos (run* [q]
-                       (comboo (keys legal-moves) (vals legal-moves) q))
+                           (comboo (keys legal-moves) (vals legal-moves) q))
         all-combos (map alist->map legal-combos)]
     (map (partial update-true env) all-combos)))
 
@@ -182,7 +318,7 @@
         score (fn [p]
                 (first 
                  (run 1 [q]
-                   ((get-relation env :goal) p q))))]
+                      ((get-relation env :goal) p q))))]
     (zipmap players (map score players))))
 
 ;;; Early cut-off helpers
@@ -234,7 +370,7 @@
     {:scores scores
      :visits 0
      :children (gen-children env)}))
-        
+
 ;;; Returns the "state" (as a set, which can be used in the 
 ;;; statistics map as a key)
 (defn get-state [env]
@@ -242,7 +378,7 @@
 
 ;;; Gets the statistics map of the current environment
 (defn get-stats [env stats]
-    (get stats (get-state env) (initial-stats env)))
+  (get stats (get-state env) (initial-stats env)))
 
 ;;; For now, this is just an average.
 ;;; It's returned in the same format as playout and get-scores
@@ -263,7 +399,7 @@
                 (map (fn [k]
                        (+ ((playout env) k) (result k)))
                      (keys result)))
-;                (map + (vals result) (vals (playout env))))
+                                        ;                (map + (vals result) (vals (playout env))))
                (dec n)))))
 
 ;;; path is a list of environments
@@ -282,8 +418,8 @@
                                         ;; COULD THERE BE A DOWNSIDE/BAD BIAS?
                                         (* factor (result k))
                                         (result k))]
-                              (+ (prev-scores k)
-                                 s)))
+                                (+ (prev-scores k)
+                                   s)))
                             (keys prev-scores)))]
       (recur (rest path) result 
              (-> stats
@@ -301,8 +437,8 @@
   (let [state (get-state env)
         children (get-in stats [state :children])
         explored (remove
-                 #(zero? ((get-stats % stats) :visits))
-                 children)]
+                  #(zero? ((get-stats % stats) :visits))
+                  children)]
     (if (empty? explored)
       (rand-nth children)
       (apply max-key #((mcts-value (get-stats % stats)) player) explored))))
@@ -316,7 +452,7 @@
         unexplored? (fn [cenv]
                       (= 0 (get-in stats [(get-state cenv) :visits] 0)))]
     (filter unexplored? children)))
-    
+
 
 ;;; Adds state in env to stats
 ;;; Initializes child notes for the stat
@@ -380,7 +516,7 @@
             (get-in stats [(get-state e) :visits])
             (get-in stats [(get-state e) :scores])])
          (gen-children env))))
-             
+
 
 (defn best-move [env player budget]
   (find-move
@@ -426,6 +562,46 @@ it to the tree, and backpropagates the value up the path."
                               {:x (x-player env)
                                :o (o-player env)})
                  (inc turn)))))))
-        
+
+;;; Random player
 (defn random-move [env player _]
   (rand-nth (run* [q] ((get-relation env :legal) player q))))
+
+;; -------------------------------------------------------------------------
+;; From https://gist.github.com/jsmorph/7042092
+;; Ugly mitigation of http://dev.clojure.org/jira/browse/CLJ-1152 in
+;; the protocols case. Motivation: Need to eval lots domain-specific
+;; language code rendered in core.logic. Approach: Start a thread to
+;; purge protocol caches every second. You should probable write a
+;; fancier version.
+
+(defn protocol? [x]
+  (and (instance? clojure.lang.PersistentArrayMap x)
+       (boolean (:on-interface x))))
+
+(defn protocols
+  "Get a seq of protocols in the given namespace."
+  ([namespace]
+     (binding [*ns* (if (symbol? namespace)
+                      (find-ns namespace)
+                      namespace)]
+       (doall (filter protocol?
+                      (map var-get
+                           (filter var?
+                                   (map second
+                                        (ns-map *ns*))))))))
+  ([]
+     (protocols *ns*)))
+
+(defonce simple-protocol-cache-cleaner
+  ;; Starts a simple daemon thread that purges the caches for
+  ;; all protocols in the current namespace.
+  (let [interval 1000 ;; ms
+        ps (protocols *ns*)]
+    (doto (new Thread (fn []
+                        (loop [i 0]
+                          (doseq [p ps] (-reset-methods p))
+                          (Thread/sleep interval)
+                          (recur (inc i)))))
+      (.setDaemon true)
+      (.start))))
