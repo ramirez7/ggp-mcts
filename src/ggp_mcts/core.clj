@@ -18,53 +18,15 @@
 ;;; - core.logic relations
 ;;; - Clojure functions
 
-;;; Environment methods
-;;; An environment is a map of the following form:
-;;; {:relations {KEY-RELATION PAIRS}, :functions {KEY-FUNCTION PAIRS}}
-
 (defn get-binding [env path]
   (partial (get-in env path) env))
 
-(defn get-relation [env name]
+(defn get-relation
+  "Returns a core.logic relation fn from environment env.
+
+  See create-environment for details on environment structure."
+  [env name]
   (get-binding env [:relations name]))
-
-(defn get-function [env name]
-  (get-binding env [:functions name]))
-
-;;; Example GDL relation
-;;; Legal from Tic-Tac-Toe
-(def ttt-gdl-legal
-  '((<= (legal ?w (mark ?x ?y))
-        (true (cell ?x ?y b))
-        (true (control ?w)))
-    (<= (legal white noop)
-        (true (control black)))
-    (<= (legal black noop)
-        (true (control white)))))
-
-
-;;; Some ways to write clojure code
-(def test-fn-list
-  (list 'fn ['a 'b] 
-        (list 'conde 
-              [(list '== 'a 1)] 
-              [(list '== 'b 2)])))
-
-(def test-fn-quasi
-  (let [fn-sym 'fn
-        args ['a 'b]
-        conde-sym 'conde
-        conde-clauses (list [`(~'== ~(args 0) 1)]
-                            [`(~'== ~(args 1) 2)])]
-    `(~fn-sym ~args (~conde-sym ~@conde-clauses))))
-
-(defn test-match [e title]
-  (match [(vec e)]
-    [[title & args]] args
-    [[rator & args]] (list args rator)))
-
-;;This also works and has less in let:
-;;  `(~'fn ~args (~'conde ~@conde-clauses))
 
 ;;; GDL->Relation transformers
 (defn fresh-var? [e]
@@ -79,11 +41,14 @@
 
 (defn keyword->symbol [k]
   (symbol (apply str (rest (str k)))))
-;;; Assumes arg is either symbol or list of symbols
-;;; Transforms lists into vecs so core.logic can do cool stuff with them
-;;; Leaves fresh-variables as symbols
-;;; If it isn't a fresh variable, 
+
+
 (defn transform-arg [arg]
+  "Assumes arg is either symbol or list of symbols
+  Transforms lists into vecs so core.logic can do cool stuff with them
+  Leaves fresh-variables as symbols
+  If it isn't a fresh variable, it either turns symbols into keywords
+  or it leaves things be (for instance, numbers)"
   (if (list? arg)
     (vec
      (map (fn [a]
@@ -194,10 +159,14 @@
     (reduce collector {} description)))
 
 (defn map-map [f m]
+  "Returns a map such that all its values have had f applied to them"
   (reduce (fn [m [k v]]
             (assoc m k (f v))) {} m))
 
-(defn create-code [description]
+(defn create-code 
+  "Given a GDL description, create-code returns a map of Clojure code
+  that is equivalent to the game described"
+  [description]
   (reduce
    (fn [m [relation-name {args :args body :body}]]
      (assoc-in m [relation-name] (transform-relation relation-name args body)))
@@ -205,6 +174,13 @@
    (collect-relations description)))
 
 (defn create-environment [description]
+  "Creates an environment that can be used in MCTS of the game
+  described in the GDL description.
+
+  The map is of the form {:relations {<relation-name> <core.logic fn>}}.
+
+  The :relations key is there so this map can be used to hold other data
+  while keeping the game logic encapsulated."
   (let [code (create-code description)
         env (update-in
              initial-env [:relations] conj
@@ -222,14 +198,11 @@
 ;;; ---------------------------------------------------------------------------
 
 ;;; Relation->Function transformers
-;;; TODO: COMMENT ALL THIS MORE AND EXPLAIN THOROUGHLY
-;;; moves is a map with keys as player names, and values of their moves
-;;; Right now, it generates code. If I change how moves are represented
-;;; it wouldn't be necessary. The does relation woudl have to take an arg
-;;; that is a vector of both r and a. Then it'd work.
+
+;;FIXME: Use syntax-quote
 (defn update-does [env moves]
   (let [next-does (list 'fn ['env 'r 'a] 
-                        (concat '(conde) ;;DIRTY. backtick lib would help
+                        (concat '(conde) 
                                 (map (fn [[k v]]
                                        [(list '== 'r k)
                                         (list '== 'a v)])
@@ -335,13 +308,42 @@
                 coll))
        (count coll))))
 
+(defn first-goal-change [goals]
+  (loop [goals goals i 0]
+    (cond
+     (< (count goals) 2) (+ i 1)
+     (not= (first goals) (second goals)) i
+     :else (recur (rest goals) (inc i)))))
+
+(defn is-goal-stable? [goals]
+  'TODO)
+
 (defn playout
   "playout randomly plays a game from the state in env until
   it terminates and returns the results"
-  [env]
+  ([env]
+     (if (terminal? env)
+       (get-scores env)
+       (recur (rand-nth (gen-children env)))))
+  ([env {use-early-cutoff? :early-cutoff}]
+     (let [num-players (count (get-scores env))]
+       (loop [env env goals [] steps 0]
+         (let [child (rand-nth (gen-children env))
+               next-goals (cons (get-scores env) goals)
+               cut (+ (first-goal-change goals) num-players)]
+           (cond
+            (and (use-early-cutoff?) (is-goal-stable? goals))
+            2
+            :else (recur child next-goals (inc steps))))))))
+
+
+
+(defn playout-verbose [env]
   (if (terminal? env)
     (get-scores env)
-    (recur (rand-nth (gen-children env)))))
+    (do
+      (clojure.pprint/pprint (get-scores env))
+      (recur (rand-nth (gen-children env))))))
 
 ;;; ---------------------------------------------------------------------------
 
@@ -377,9 +379,9 @@
 (defn get-stats [env stats]
   (get stats (get-state env) (initial-stats env)))
 
-;;; For now, this is just an average.
+;;; For now, this is just an average raw score
 ;;; It's returned in the same format as playout and get-scores
-;;; TODO: Implement UCT
+;;; TODO: Implement UCT or some better value method
 (defn mcts-value [stats]
   (zipmap (keys (stats :scores))
           (map (fn [n] 
@@ -396,7 +398,6 @@
                 (map (fn [k]
                        (+ ((playout env) k) (result k)))
                      (keys result)))
-                                        ;                (map + (vals result) (vals (playout env))))
                (dec n)))))
 
 ;;; path is a list of environments
@@ -430,7 +431,10 @@
 ;;;      (state will probably need to be put into env with update-true)
 ;;; 
 ;;;  This is the only function that cares about whose turn it is.
-(defn mcts-select [env stats player]
+(defn mcts-select 
+  "Returns the best next state (as an environment) for player given 
+  statistics stats"
+  [env stats player]
   (let [state (get-state env)
         children (get-in stats [state :children])
         explored (remove
@@ -438,6 +442,8 @@
                   children)]
     (if (empty? explored)
       (rand-nth children)
+      ;; Takes the best average score of the player in the future states.
+      ;; Doesn't take into account other players.
       (apply max-key #((mcts-value (get-stats % stats)) player) explored))))
 
 ;;; ARGS:
@@ -472,9 +478,10 @@
          (mcts-add-child child)
          (mcts-backprop (cons child path) result))))
 
-;;; ARGS:
-;;; RET: statistics (I think)
-(defn mcts-iteration [env stats player]
+(defn mcts-iteration
+  "Performs one iteration of MCTS on state env, using initial
+  statistics stats, playing as player"
+  [env stats player]
   (loop [env env, stats stats, path (list env)]
     (if (terminal? env)
       (mcts-backprop path (get-scores env) stats)
@@ -483,14 +490,19 @@
         (let [ch (mcts-select env stats player)]
           (recur ch stats (cons ch path)))))))
 
-(defn mcts-algorithm [env player budget]
+(defn mcts-algorithm 
+  "Performs a complete MCTS within a given budget of iterations.
+  It returns the statistics at the end of all iterations."
+  [env player budget]
   (loop [env env
          stats {(get-state env) (initial-stats env)}
          budget budget]
     (if (< budget 1) stats
         (recur env (mcts-iteration env stats player) (dec budget)))))
 
-(defn find-move [env next-env player]
+(defn find-move
+  "Finds the move that player can make in env to get to next-env"
+  [env next-env player]
   (let [players (run* [q] ((get-relation env :role) q))
         gen-legal (fn [p]
                     (run* [q]
@@ -505,7 +517,11 @@
                                     all-combos))]
     ((first found-combo) player)))
 
-(defn child-scores [env budget player]
+
+(defn child-scores
+  "Returns a map of scores of all the child states
+  Not used. Useful for debugging."
+  [env player budget]
   (let [stats (mcts-algorithm env player budget)]
     (map (fn [e]
            [(terminal? e) (get-scores e)
@@ -515,24 +531,27 @@
          (gen-children env))))
 
 
-(defn best-move [env player budget]
+(defn best-move
+  "Returns the best MOVE the player can make (as a vector)"
+  [env player budget]
   (find-move
    env (mcts-select
         env (mcts-algorithm env player budget) player) player))
 
-;; I suspect there's a space leak somewhere.
-;; REPL randomly runs out of memory? hm
-
 ;;; play-game 
-;;; players must be ternary functions with args [env player budget]
-;;; and return a move
-;;; the play-game function then update the state according to moves
-;;;
-;;; Right now, it's just 2-players to test TicTacToe.
-;;; TODO: Make it with n-player games
-;;;
-;;; It also prints
-(defn play-game [env player1 player2 budget]
+(defn play-game 
+  "players must be ternary functions with args [env player budget]
+  and return a move the play-game function then update the state 
+  according to moves
+
+  Right now, it's just 2-players to test GDL TicTacToe.
+
+  TODO: Make it play with any GDL game. This would entail taking an
+  arbitrary number of players as inputs in addition to assigning them
+  roles.
+
+  It also prints turn# and game state every turn"
+  [env player1 player2 budget]
   (let [x-player (fn [env] (player1 env :black budget))
         o-player (fn [env] (player2 env :white budget))]
     (loop [env env turn 0]
@@ -546,8 +565,9 @@
                                :white (o-player env)})
                  (inc turn)))))))
 
-;;; Random player
-(defn random-move [env player _]
+(defn random-move
+  "A random player used for testing."
+  [env player _]
   (rand-nth (run* [q] ((get-relation env :legal) player q))))
 
 ;; -------------------------------------------------------------------------
@@ -580,7 +600,7 @@
   ;; Starts a simple daemon thread that purges the caches for
   ;; all protocols in the current namespace.
   (let [interval 1000 ;; ms
-        ps (protocols *ns*)]
+        ps (protocols [*ns* 'clojure.core.logic])];; I added core.logic
     (doto (new Thread (fn []
                         (loop [i 0]
                           (doseq [p ps] (-reset-methods p))
@@ -588,3 +608,4 @@
                           (recur (inc i)))))
       (.setDaemon true)
       (.start))))
+
