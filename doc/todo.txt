@@ -1,0 +1,10 @@
+- Clean up code
+- Test code more thoroughly
+  - Ensure the GDL->core.logic env works with MCTS
+- Handle textfile input GDL in addition to .clj
+- Write some useful output functions
+  - print-children
+- Generalize play-game
+- Get data
+- Write paper
+- Update README
