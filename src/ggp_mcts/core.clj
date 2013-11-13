@@ -520,20 +520,6 @@
    env (mcts-select
         env (mcts-algorithm env player budget) player) player))
 
-
-#_(defn learn-iteration [mem state]
-    "The core algorithm; a single analysis of a state. Searches the tree
-for an unexplored child, estimates the child's value, adds
-it to the tree, and backpropagates the value up the path."
-    (loop [mem mem, state state, path (list state)]
-      (if-let [result (ttt-terminal? state)]
-        (uct-backprop mem path result)
-        (if (not-empty (uct-unexplored mem state))
-          (uct-grow mem path)
-          (let [ch (uct-select mem state)]
-            (recur mem ch (cons ch path)))))))
-;; MORE
-
 ;; I suspect there's a space leak somewhere.
 ;; REPL randomly runs out of memory? hm
 
@@ -547,17 +533,17 @@ it to the tree, and backpropagates the value up the path."
 ;;;
 ;;; It also prints
 (defn play-game [env player1 player2 budget]
-  (let [x-player (fn [env] (player1 env :x budget))
-        o-player (fn [env] (player2 env :o budget))]
+  (let [x-player (fn [env] (player1 env :black budget))
+        o-player (fn [env] (player2 env :white budget))]
     (loop [env env turn 0]
       (do
         (printf "Turn %s\n" turn)
-        (pprint (run* [q] ((get-relation env :true) q)))
+        (clojure.pprint/pprint (run* [q] ((get-relation env :true) q)))
         (if (terminal? env)
           (get-scores env)
           (recur (update-true env
-                              {:x (x-player env)
-                               :o (o-player env)})
+                              {:black (x-player env)
+                               :white (o-player env)})
                  (inc turn)))))))
 
 ;;; Random player
