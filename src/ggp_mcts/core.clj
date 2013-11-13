@@ -18,6 +18,19 @@
 ;;; - core.logic relations
 ;;; - Clojure functions
 
+;;; Environment methods
+;;; An environment is a map of the following form:
+;;; {:relations {KEY-RELATION PAIRS}, :functions {KEY-FUNCTION PAIRS}}
+
+(defn get-binding [env path]
+  (partial (get-in env path) env))
+
+(defn get-relation [env name]
+  (get-binding env [:relations name]))
+
+(defn get-function [env name]
+  (get-binding env [:functions name]))
+
 ;;; Example GDL relation
 ;;; Legal from Tic-Tac-Toe
 (def ttt-gdl-legal
@@ -61,6 +74,11 @@
 (defn find-fresh-vars [clause]
   (vec (distinct (filter fresh-var? (flatten clause)))))
 
+(defn symbol->keyword [s]
+  (keyword (str s)))
+
+(defn keyword->symbol [k]
+  (symbol (apply str (rest (str k)))))
 ;;; Assumes arg is either symbol or list of symbols
 ;;; Transforms lists into vecs so core.logic can do cool stuff with them
 ;;; Leaves fresh-variables as symbols
@@ -69,10 +87,10 @@
   (if (list? arg)
     (vec
      (map (fn [a]
-            (if (fresh-var? a)
+            (if (or (fresh-var? a) (number? a))
               a
               (keyword (str a)))) arg))
-    (if (fresh-var? arg)
+    (if (or (fresh-var? arg) (number? arg))
       arg
       (keyword (str arg)))))
 
@@ -80,51 +98,34 @@
 ;;; relations that correspond to it. "Head" relations correspond
 ;;; to lists of (== a b) unifications. Other relations refer to
 ;;; calling external relations, which requires an environment.
-#_(defn transform-call [caller-name [env & caller-args] call]
-  (if (not (list? call))
-    '()
-    (let [a-not-call? (= :not (keyword (str (first call))))
-          callee-name (if a-not-call?
-                        (if (symbol? (second call))
-                          (keyword (str (second call)))
-                          (keyword (str (first (second call)))))
-                        (keyword (str (first call))))
-          callee-args (if a-not-call?
-                        (if (symbol? (second call))
-                          '()
-                          (map transform-arg (rest (second call))))
-                        (map transform-arg (rest call)))
-          transform-head (fn [p v] `(~'== ~p ~v))
-          env-call `(~'get-relation ~env ~callee-name)]
-      (if a-not-call? ;;handle nots -~-> nafc
-        `(~'nafc ~env-call ~@callee-args)
-        (if (= caller-name callee-name)
-          (map transform-head caller-args callee-args)
-          (list `(~env-call ~@callee-args)))))))
-      
 
 (defn transform-call [caller-name [env & caller-args] call]
-  (let [clean-call (if (list? call) (vec call) call)
-        clean-name (symbol (apply str (rest (str caller-name))))]
+  (let [clean-call (if (list? call) (vec call) [call])
+        clean-name (keyword->symbol caller-name)]
     (match [clean-call]
       [[(r :guard symbol?)]] '()
       [['not (r :guard symbol?)]]
-      (list `(~'nafc (~'get-relation ~env ~r)))
+      (list `(~'nafc (~'get-relation ~env ~(symbol->keyword r))))
       [['not (r :guard list?)]] 
-      (list `(~'nafc (~'get-relation ~env ~(first r)) ~@(rest r)))
+      (list `(~'nafc (~'get-relation ~env ~(symbol->keyword (first r))) 
+                     ~@(map transform-arg (rest r))))
       [[clean-name & args]]
       (map (fn [p v] `(~'== ~p ~v))
            caller-args
            (map transform-arg args))
       [[callee-name & args]]
-      (list `((~'get-relation ~env ~(keyword (str callee-name))) 
+      (list `((~'get-relation ~env ~(symbol->keyword callee-name))
               ~@(map transform-arg args))))))
 
 
 (defn transform-clause [caller-name caller-args clause]
-  [`(~'fresh ~(find-fresh-vars clause)
-              ~@(mapcat (partial transform-call caller-name caller-args)
-                         (filter #(not= % '<=) clause)))])
+  (match [(vec clause)]
+    [['<= & clauses]]
+    [`(~'fresh ~(find-fresh-vars clause)
+        ~@(mapcat (partial transform-call caller-name caller-args) clauses))]
+    :else
+    [`(~'fresh ~(find-fresh-vars clause)
+        ~@(transform-call caller-name caller-args clause))]))
   
 (defn transform-relation [relation-name relation-args relation]
   (let [clauses (map (partial transform-clause
@@ -156,7 +157,7 @@
 
 (def initial-env
   {:relations
-   {:distinct distincto}})
+   {:distinct (fn [env a b] (distincto [a b]))}})
 
 ;; TODO: use core.match instead of these nested ifs
 
@@ -196,12 +197,19 @@
   (reduce (fn [m [k v]]
             (assoc m k (f v))) {} m))
 
-(defn create-environment [description]
+(defn create-code [description]
   (reduce
    (fn [m [relation-name {args :args body :body}]]
-     (assoc m relation-name (transform-relation relation-name args body)))
-     {}
-     (collect-relations description)))
+     (assoc-in m [relation-name] (transform-relation relation-name args body)))
+   {}
+   (collect-relations description)))
+
+(defn create-environment [description]
+  (let [code (create-code description)
+        env (update-in
+             initial-env [:relations] conj
+             (map-map (fn [e] (eval e)) code))]
+    (assoc-in env [:relations :true] (get-in env [:relations :init]))))
 
 ;;; Notes:
 ;;; distinct is in GDL. It maps directly to distincto
@@ -209,18 +217,7 @@
 ;;;
 ;;; (not (rator args)) -~-> (nafc (get-relation env rator) & args)
 
-;;; Environment methods
-;;; An environment is a map of the following form:
-;;; {:relations {KEY-RELATION PAIRS}, :functions {KEY-FUNCTION PAIRS}}
 
-(defn get-binding [env path]
-  (partial (get-in env path) env))
-
-(defn get-relation [env name]
-  (get-binding env [:relations name]))
-
-(defn get-function [env name]
-  (get-binding env [:functions name]))
 
 ;;; ---------------------------------------------------------------------------
 
