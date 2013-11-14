@@ -300,13 +300,15 @@
 (defn variance
   "Calculates the variance of all members of a collection."
   [coll]
-  (let [u (mean coll)]
-    (/ (reduce + 
-               (map 
-                (fn [n]
-                  (* (- n u) (- n u)))
-                coll))
-       (count coll))))
+  (if (zero? (count coll))
+    0
+    (let [u (mean coll)]
+      (/ (reduce + 
+                 (map 
+                  (fn [n]
+                    (* (- n u) (- n u)))
+                  coll))
+         (count coll)))))
 
 (defn first-goal-change [goals]
   (loop [goals goals i 0]
@@ -315,26 +317,45 @@
      (not= (first goals) (second goals)) i
      :else (recur (rest goals) (inc i)))))
 
-(defn is-goal-stable? [goals]
-  'TODO)
+(defn is-goal-stable? [goals threshold]
+  (let [goal-variance (map variance (map (fn [v]
+                                           (map - (butlast v) (rest v)))
+                                         (vals goals)))]
+    (and (not (zero? (mean goal-variance)))
+         (> (mean goal-variance) threshold))))
 
 (defn playout
   "playout randomly plays a game from the state in env until
-  it terminates and returns the results"
+  it terminates and returns the results.
+
+  If use-early-cutoff? is true, it uses early termination extensions.
+  At the moment, only early termination extension used is based on
+  goal stability. See 'Generalized Monte-Carlo Tree Search Extensions
+  for General Game Playing' (Finnsson 2012 AAAI) for more information."
   ([env]
      (if (terminal? env)
        (get-scores env)
        (recur (rand-nth (gen-children env)))))
   ([env {use-early-cutoff? :early-cutoff}]
      (let [num-players (count (get-scores env))]
-       (loop [env env goals [] steps 0]
-         (let [child (rand-nth (gen-children env))
-               next-goals (cons (get-scores env) goals)
+       (loop [env env
+              goals (zipmap
+                     (keys (get-scores env))
+                     (repeat (count (get-scores env)) []))
+              steps 0]
+         (let [scores (get-scores env)
+               next-goals (conj goals
+                                (zipmap (keys scores)
+                                        (map (fn [k]
+                                               (cons (scores k) (goals k)))
+                                             (keys scores))))
                cut (+ (first-goal-change goals) num-players)]
-           (cond
-            (and (use-early-cutoff?) (is-goal-stable? goals))
-            2
-            :else (recur child next-goals (inc steps))))))))
+           (if (or (terminal? env)
+                   (and use-early-cutoff?
+                        (is-goal-stable? goals 10);;threshold predetermined
+                        (>= steps cut)))
+             scores
+             (recur (rand-nth (gen-children env)) next-goals (inc steps))))))))
 
 
 
