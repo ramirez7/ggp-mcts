@@ -600,7 +600,20 @@
   ;; Starts a simple daemon thread that purges the caches for
   ;; all protocols in the current namespace.
   (let [interval 1000 ;; ms
-        ps (protocols [*ns* 'clojure.core.logic])];; I added core.logic
+        ps (protocols *ns*)]
+    (doto (new Thread (fn []
+                        (loop [i 0]
+                          (doseq [p ps] (-reset-methods p))
+                          (Thread/sleep interval)
+                          (recur (inc i)))))
+      (.setDaemon true)
+      (.start))))
+
+(defonce simple-protocol-cache-cleaner-core-logic
+  ;; Starts a simple daemon thread that purges the caches for
+  ;; all protocols in the current namespace.
+  (let [interval 1000 ;; ms
+        ps (protocols 'clojure.core.logic)];; I added core.logic
     (doto (new Thread (fn []
                         (loop [i 0]
                           (doseq [p ps] (-reset-methods p))
