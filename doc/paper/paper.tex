@@ -8,7 +8,7 @@
 \lstset{language=Lisp, basicstyle=\footnotesize}
 \usepackage{caption}
 \DeclareCaptionFont{white}{ \color{white} }
-\captionsetup[lstlisting]{singlelinecheck=false, margin=0pt, font={bf,footnotesize} }
+\captionsetup[lstlisting]{singlelinecheck=false, margin=0pt, font={bf,footnotesize}}
 \setlength{\pdfpagewidth}{8.5in}
 \setlength{\pdfpageheight}{11in}
 \nocopyright
@@ -26,7 +26,12 @@
 \subsection{Background}
 
 \subsubsection{General Game Playing}
-\cite{StanfordGGP}
+The General Game Playing Competition is an annual competition created and managed by Stanford University in which game-playing agents compete playing games of which they have no prior knowledge.\cite{StanfordGGP} This means they cannot use any heuristical knowledge (unless they can infer some from the game description) and must use more general methods of game-playing.
+
+All the games played at the competition are described in Game Description Language (also known as Game Definition Language.) Games are boiled down to their most general essence when expressed in this language. A game description is composed of a series of relations. While the game can define its own game-specific relations, there are set relations that must be defined for all games. They are listed below, as described on the Stanford General Game Playing website \cite{StanfordGGP}
+\begin{itemize}
+\item 
+\end{itemize}
 \subsubsection{Monte-Carlo Tree Search}
 
 \subsection{FINNSSON}
@@ -40,12 +45,62 @@
 \subsection{Background}
 
 \subsubsection{Clojure}
-
+The implementation of General Game Playing Monte-Carlo Tree Search presented in this paper was implemented in the programming language Clojure. Clojure is a Lisp dialect that can be compiled to run on the Java Virtual Machine, .NET Common Language Runtime, and JavaScript Virtual Machine. It was chosen for a variety of reasons
+\begin{itemize}
+% TODO: BOLD TITLE TERMS
+\item Data Structures Clojure has a rich collection of immutable, persistent data structures including lists, vectors, sets, and maps.
+\item Libraries Clojure has multiple libraries suited for the project, including pattern matching and logic programming libraries.
+\item Highly Functional Clojure has a large set of higher-order functions that can operate on any of its collections.
+\item Homoiconicity Part of this project involves translating Game Description Language into Clojure. This task would not have been possible in the timespan it was done in in a language that is not code-as-data.
+\item Comfort On a personal level, I am most comfortable programming in Clojure.
+\end{itemize}
 \subsubsection{core.logic}
-%FIXME CAN'T LINEBREAK AFTER THIS SUBSUBSECTION
-The primary Clojure library used in the implementation was core.logic, which is a port of the logic programming language miniKanren as formulated by William Byrd in his 2010 PhD thesis \cite{byrd2010relational}.
+%FIXME: CAN'T LINEBREAK AFTER THIS SUBSUBSECTION
+The primary Clojure library used in the implementation was core.logic, which is a port of the logic programming language miniKanren as formulated by William Byrd in his 2010 PhD thesis \cite{byrd2010relational}. miniKanren and core.logic are logic programing languages, which means that they deal in relations rather than functions. To get a feel for what that means, consider the + Clojure function compared to the + core.logic relation:
 
+\begin{lstlisting}[frame=single, caption=The + function]
+REPL:> (+ 2 3)
+5
+\end{lstlisting}
 
+\begin{lstlisting}[frame=single, caption=The + relation]
+REPL:> (run* [q] (+ 2 3 q))
+(5)
+REPL:> (run* [q] (+ 2 q 5))
+(3)
+REPL:> (run* [q] (+ q 3 5))
+(2)
+REPL:> (run* [q] (+ 2 3 5))
+(._0) ;; SUCCESS
+REPL:> (run* [q] (+ 2 3 7))
+() ;; FAILURE
+\end{lstlisting}
+
+(Note: The (run* [q] \textless RELATION\textgreater) means 'give me all the values of q such that the relation (with q substituted in) succeeds')
+
+There are some key differences:
+\begin{itemize}
+\item The + function takes two arguments, a and b, and returns a+b, whereas the + relation takes three arguments, a b and c, and is the declaration that a+b=c.
+\item This difference allows the relation to run backwards (in effect, performing subtraction.)
+\item The relation doesn't run a number. It returns a list of numbers.
+\end{itemize}
+
+core.logic also allows the user to declare 'fresh' variables (which are free until bound) to work with. It also provides a relational disjunction in the form of conde. Finally, it offers unification ('==') to constrain logic variables. To show these in action (and to show a more complex example of core.logic), consider the below relation and its evaluation:
+
+\begin{lstlisting}[frame=single, caption=Relation to generate all pairs of whole numbers (x y) such that x+y equals 3 or 4]
+(defn pair-example [p]
+  (fresh [x y]
+    (== [x y] p)
+    (in x y (interval 0 4))
+    (conde
+      [(+ x y 3)]
+      [(+ x y 4)])))
+
+REPL:> (run* [q] (pair-example q))
+([0 3] [0 4] [1 2]
+ [1 3] [2 1] [2 2]
+ [3 0] [3 1] [4 0])
+\end{lstlisting}
 
 \subsection{GDL Translation to core.logic}
 \subsubsection{Motivation}
