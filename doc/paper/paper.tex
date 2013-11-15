@@ -21,14 +21,12 @@
 \begin{document}
 \maketitle
 
-\section{Introduction}
-% TODO (unless no room)
 \section{Critique}
 
 \subsection{Background}
 
 \subsubsection{General Game Playing}
-The General Game Playing Competition is an annual competition created and managed by Stanford University in which game-playing agents compete by playing games of which they have no prior knowledge.\cite{StanfordGGP} This means they cannot use any heuristical knowledge (unless they can infer some from the game description) and must use more general methods of game-playing instead. Games occur with two or more agents communicating synchronously with a Game Master. The Game Master first tells the agents the rules of the game, and then for the rest of the game it is responsible for receiving player input and telling the players the next state of the game. All moves are synchronous, but turn-based games are simulated by the game rules requiring all but the active player to pass.
+The General Game Playing Competition is an annual competition created and managed by Stanford University in which game-playing agents compete by playing games of which they have no prior knowledge \cite{StanfordGGP}. This means they cannot use any heuristical knowledge (unless they can infer some from the game description) and must use more general methods of game-playing instead. Games occur with two or more agents communicating synchronously with a Game Master. The Game Master first tells the agents the rules of the game, and then for the rest of the game it is responsible for receiving player input and telling the players the next state of the game. All moves are synchronous, but turn-based games are simulated by the game rules requiring all but the active player to pass.
 
 All the games played at the competition are described in Game Description Language (also known as Game Definition Language.) Games are boiled down to their most general essence when expressed in this language. A game description is composed of a series of relations. While the game can define its own game-specific relations, there are set relations that must be defined for all games. They are listed below, as described on the Stanford General Game Playing website \cite{StanfordGGP}.
 % Remove all this listing crap if I go over-length
@@ -45,10 +43,10 @@ All the games played at the competition are described in Game Description Langua
 \item \emph{terminal} means that the current state is a terminal state.
 \end{itemize}
 
-The true and does relations are in effect inputs. The true relations are inputs to the agents from the Game Master, and the does relation is the input from the agents to the Game Master. Therefore, all of the above relations except those two should be defined (most likely partially in terms of true and/or does) in the GDL description of a game.
+The \emph{true} and \emph{does} relations are in effect inputs. The \emph{true} relations are inputs to the agents from the Game Master, and the \emph{does} relation is the input from the agents to the Game Master. Therefore, all of the above relations except those two should be defined (most likely partially in terms of \emph{true} and/or \emph{does}) in the GDL description of a game.
 
 \subsubsection{Monte-Carlo Tree Search}
-Monte-Carlo Tree Search is a combination of the Monte-Carlo method of performing random simulations and game tree search. The algorithm traverses the game tree state by state, and performed random simulations at each state. As it traverses the game tree, the statistics are collected and combined. After the algorithm's budget is exhausted, these statistics are used to make an informed decision.
+Monte-Carlo Tree Search is a combination of the Monte-Carlo method of performing random simulations and game tree search. The algorithm traverses the game tree state by state, and performs random simulations at each state. As it traverses the game tree, the statistics are collected and combined. After the algorithm's budget is exhausted, these statistics are used to make an informed decision.
 
 There are four canonical stages to Monte-Carlo Tree Search \cite{finnsson2012generalized}:
 \begin{itemize}
@@ -69,7 +67,7 @@ These stages are visualized in the Figure 1 \cite{finnsson2012generalized}.
 \subsection{Generalized Monte-Carlo Tree Search Extensions for General Game Playing}
 
 \subsubsection{Summary}
-This paper \cite{finnsson2012generalized} presents extensions menat to be optimization for Monte-Carlo Tree Search that apply to any generally-described game. It is important that this extensions to not make any assumptions about game structure or rules. These extensions aim to improve the execution time and accuracy of the search. Two of them affect the playout stage, which in many games can be quite costly. The final extension affects child selection, which is a key factor in how accurately the agent can traverse the tree.
+This paper \cite{finnsson2012generalized} presents extensions meant to be optimizations for Monte-Carlo Tree Search that apply to any generally-described game. It is important that these extensions do not make any assumptions about game structure or rules. These extensions aim to improve the execution time and accuracy of the search. Two of them affect the playout stage, which in many games can be quite costly. The final extension affects child selection, which is a key factor in how accurately the agent can traverse the tree.
 \begin{itemize}
 \item \emph{Goal Stability Early Cutoff} If a trend is confidently found in the progression of the Goal relation of a game, playout can be terminated early and the predicted winner can be stated as the winner.
 \item \emph{Terminal Interval Early Cutoff} If a game has a tendency to end in an interval of turns, it is unneccessary to go more than 1/3 of the way through that interval \cite{finnbjorn}
@@ -83,9 +81,9 @@ The extensions presented in the paper are all well-thought out and founded withi
 
 However, in practice some of these extensions will end up accomplishing nothing. For example, in many games (such as Tic-Tac-Toe) there is a ternary Goal for every state: a player has either won, lost, or the game is in a state of draw. This goal will not fluctuate from draw until it reaches termination, so Goal Stability Early Cutoff is completely irrelevant to Tic-Tac-Toe.
 
-For more complex games, the Goal Stability Early Cutoff extension is highly dependent on the encoding of the Goal state by the creator of the game description. For instance, in Chess, it would be reasonable to encode the Goal for a player as 100 if they have taken the enemy king, 0 if they have had their king taken, nad 50 if the game is drawn or still in progress. This goal would render the Goal Stability Early Cutoff extension powerless. That said, if the concept of material is introduced into the game, the extension would likely be very useful.
+For more complex games, the Goal Stability Early Cutoff extension is highly dependent on the encoding of the Goal state by the creator of the game description. For instance, in Chess, it would be reasonable to encode the Goal for a player as 100 if they have taken the enemy king, 0 if they have had their king taken, and 50 if the game is drawn or still in progress. This goal would render the Goal Stability Early Cutoff extension powerless. That said, if the concept of ``material'' is introduced into the game, the extension would likely be very useful.
 
-The Unexplored Action Urgency extension represents a key area of research and improvement for MCTS: Selection. In terms of both execution time and accuracy, more powerful Selection algorithms are key.
+The Unexplored Action Urgency extension represents a key area of research and improvement for MCTS: Selection. In terms of both execution time and accuracy, more powerful Selection algorithms are key, and much of current and future MCTS research focuses on this aspect of the algorithm.
 
 In the Related Work section, the author notes that some MCTS agents have used similar extensions before; however, \emph{none} have used such extensions without domain-specific knowledge. This paper is relatively recent (2012), and it is reasonable to expect research in General Game Playing Monte-Carlo Tree Search to continue to grow, especially with the recent introduction of GDL-II, which allows for stochastic and imperfect-information games \cite{StanfordGGP}.
 
@@ -96,7 +94,7 @@ This paper \cite{long2010understanding} is interesting in that it does not aim t
 
 The majority of the paper reasons about the generalized search tree itself, without regard for the actual steps of growing the tree. The paper outlines three basic properties of MCTS search trees for imperfect information games:
 \begin{itemize}
-\item \emph{Leaf Correlation} The probability that sibling nodes will have the same playoff value. The lower this is, the higher level of control a player has over their chances of winning the game no matter how late in the game it is.
+\item \emph{Leaf Correlation} The probability that sibling nodes will have the same payoff value. The lower this is, the higher level of control a player has over their chances of winning the game no matter how late in the game it is.
 \item \emph{Bias} Whether or not the game favors a player.
 \item \emph{Disambiguation Factor} In imperfect information games, the disambiguation factor is how much the possible set of states shrinks as information is revealed.
 \end{itemize}
@@ -113,17 +111,25 @@ The synthetic trees used for testing represent two-player, zero-sum, stochastic 
 
 Thankfully, the author did not purely work with synthetic game trees. Real games were used as well to test the ideas presented in the paper. In addition, in real games, the properties must be measured at runtime, whereas in synthetic trees they are known ahead of time. By presenting examples of real games, the author greatly substantiates that his claims operate outside the user-designed synthetic game tree realm.
 
-The author did not discuss General Game Playing; however, with the advent of GDL-II for stochastic and imperfect information games, it is likely that the concepts core to this paper will be used in GDL-II competitions. GDL-II is fairly recent, so it is a vast, unexplored problem space, but in the coming years research such as this author's will be applied to it.
+The author did not discuss General Game Playing; however, with the advent of GDL-II for stochastic and imperfect information games, it is likely that the concepts core to this paper will be used in GDL-II competitions. GDL-II is fairly recent, so it is a vast, unexplored problem space, but in the coming years research such as this author's will likely be applied to it.
 
-In the conclusion, the author points out that Perfect Information MCTS agents can likely be taken advantage of by actually being predictable in its mistakes. This topic itself merits further discussion, as an agent that actively takes advantage of Perfect Information MCTS would be hugely successful in the General Game Playing arena.
+In the conclusion, the author points out that Perfect Information MCTS agents can likely be taken advantage of by actually being predictable in their mistakes. This topic itself merits further discussion, as an agent that actively takes advantage of Perfect Information MCTS would be hugely successful in the General Game Playing arena.
 
-\subsection{MC-RAVE}
+\subsection{Monte-Carlo tree search and rapid action value estimation in computer Go}
 
 \subsubsection{Summary}
+This paper \cite{gelly2011monte} is by far the longest of the three papers critiqued. This is in part due to the background information presented at the beginning of the paper, in which the author thoroughly explains Monte-Carlo simulation, Monte-Carlo Tree Search, a history and explanation of Computer Go, and the UCT Selection algorithm.
 
+After this lengthy introduction, Rapid Action Value Estimation is introduced. This algorithm aims to vastly speed up MCTS by allowing parallel nodes to share information so that they can be decided upon more quickly. This method has its drawbacks in accuracy, so the author then presents an extension of RAVE, MC-RAVE. This algorithm still uses the rapid learning of RAVE, but evens it out with Monte-Carlo simulations. The result is a faster and still accurate MCTS algorithm.
 
 \subsubsection{Critique}
 This paper is the most specific of the three critiqued. It deals specifically in Go, and less specifically in two-player, perfect information, \emph{zero-sum} games. General Game Playing makes no assumptions about games being zero-sum, so this paper making that assumption greatly limits the domain in which its findings are applicable.
+
+Despite this, the paper presents well thought-out and mathematically defined extensions to Monte-Carlo Tree Search. In addition, the results presented are extremely exhausted and well-presented. The figures in particular are very easy to read and show the improvements made very visually.
+
+The paper also has \emph{extensive} background information on Monte-Carlo Tree Search, which aided me greatly in the implementation of Finnsson's extension \cite{finnsson2012generalized}.
+
+In short, this paper is the most thorough on Monte-Carlo Tree Search and its extensions to my knowledge in the last three years; however, my implementation focused on General Game Playing, so the extensions presented here are not directly translatable to my implementation.
 
 \section{Implementation}
 
@@ -141,7 +147,7 @@ The implementation of General Game Playing Monte-Carlo Tree Search presented in 
 \end{itemize}
 \subsubsection{core.logic}
 
-The primary Clojure library used in the implementation was core.logic, which is a port of the logic programming language miniKanren as formulated by William Byrd in his 2010 PhD thesis \cite{byrd2010relational} and by Dan Friedman in his book The Reasoned Schemer \cite{reasonedschemer}.
+The primary Clojure library used in the implementation was core.logic, which is a port of the logic programming language miniKanren as formulated by William Byrd in his 2010 PhD thesis \cite{byrd2010relational} and by Dan Friedman in his book \emph{The Reasoned Schemer} \cite{reasonedschemer}.
 
 miniKanren and core.logic are logic programing languages, which means that they deal in relations rather than functions. To get a feel for what that means, consider the + Clojure function compared to the + core.logic relation:
 
@@ -259,7 +265,7 @@ REPL:> (run* [q] (legal :O q))
 \end{lstlisting}
 \subsubsection{Implementation}
 
-The implementation presented in this paper can take as input any GDL description (inputted as a list of quoted GDL forms) and create as output runnable core.logic relations. The outputted relations are organized in a Clojure map, where keys are the relation name and values are the runnable relations. This map is hereafter known as the games' \emph{environment}.
+The implementation presented in this paper can take as input any GDL description (inputted as a list of quoted GDL forms) and create as output runnable core.logic relations. The outputted relations are organized in a Clojure map, where keys are the relation name and values are the runnable relations. This map is hereafter known as the game's \emph{environment}.
 
 The environment is used to accomplish multiple necessary tasks:
 
@@ -293,7 +299,7 @@ The translation process is fairly straightforward; however, some key steps must 
 \item Similarly to above, the number of arguments is not declared anywhere. This is also trivial to detect. They are also not named, so gensyms are used to name each variable.
 \end{itemize}
 
-After this pre-processing is finished, creating the core.logic relations is as simple as creating code (as Clojure data structures) that represents the relations as a function and then calling \texttt{eval} on that code. The code is created according to the rules exemplified below
+After this pre-processing is finished, creating the core.logic relations is as simple as creating code (as Clojure data structures) that represents the relations as a function and then calling \texttt{eval} on that code. The code is created according to the rules exemplified below.
 \begin{lstlisting}[frame=single, caption=Reflexive head calls turn into unifications]
 ;; Transforming Legal
 (legal ?w (mark ?x ?y))
@@ -344,7 +350,7 @@ After this pre-processing is finished, creating the core.logic relations is as s
 
 \subsubsection{Results}
 % TODO: Clean this up and expand
-The translation algorithm was tested on four Game Description Language descriptions that can be found on the Stanford Gamemaster website: Tic-Tac-Toe, Chinkook, Chinese Checkers, and Pentago. These games are diverse in factors such as board structure, number of players, types of moves, synchronicity (??) of moves, etc (!!).
+The translation algorithm was tested on four Game Description Language descriptions that can be found on the Stanford Gamemaster website: Tic-Tac-Toe, Chinkook, Chinese Checkers, and Pentago. These games are diverse in factors such as board structure, number of players, types of moves, synchronicity of moves, and types of goals. REPL exchanges were had with all the generated environments for each game, and the game logic for each game was found to be sound.
 
 \subsection{Monte-Carlo Tree Search}
 
@@ -365,7 +371,7 @@ For other games, the execution time was far too long to be reasonable (in large 
 
 \subsection{Goal Stability Early Cutoff}
 \subsubsection{Implementation}
-Due to the modular nature of the Monte-Carlo Tree Search code, it was easy to implement the Goal Stability Early Cutoff extension \cite{finnsson2012generalized}. In the playout function, which originally just randomly plays a game to completely, a list of the result of the Goal relation is stored for each player.
+Due to the modular nature of the Monte-Carlo Tree Search code, it was easy to implement the Goal Stability Early Cutoff extension \cite{finnsson2012generalized}. In the playout function, which originally just randomly played a game to completion, a list of the result of the Goal relation is stored for each player and is used to make decisions about termination.
 
 Below is a code snippet (with some parts redacted for conciseness) of the core decision making process implemented.
 \begin{lstlisting}[frame=single,caption=Clojure implementation of Goal Stability Early Cutoff]
@@ -393,8 +399,6 @@ The Game Description Language to core.logic transformation algorithm stands to b
 
 Finally, the Game Description Language to core.logic transformation algorithm has applications outside of artifical intelligence. It stands to reason that it could be used as the underlying logic of a graphical user interface implementation of a variety of games. Due to the expressivity of Game Description Language, the ability to write the game logic in GDL would vastly speed up the development time of the game engine.
 
-\section{Conclusion}
-% TODO (unless no room)
 
 % References
 \bibliography{paper}
