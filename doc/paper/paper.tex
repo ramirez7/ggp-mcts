@@ -4,6 +4,11 @@
 \usepackage{times}
 \usepackage{helvet}
 \usepackage{courier}
+\usepackage{listings}
+\lstset{language=Lisp, basicstyle=\footnotesize}
+\usepackage{caption}
+\DeclareCaptionFont{white}{ \color{white} }
+\captionsetup[lstlisting]{singlelinecheck=false, margin=0pt, font={bf,footnotesize} }
 \setlength{\pdfpagewidth}{8.5in}
 \setlength{\pdfpageheight}{11in}
 \nocopyright
@@ -39,7 +44,62 @@
 \subsubsection{core.logic}
 %FIXME CAN'T LINEBREAK AFTER THIS SUBSUBSECTION
 The primary Clojure library used in the implementation was core.logic, which is a port of the logic programming language miniKanren as formulated by William Byrd in his 2010 PhD thesis \cite{byrd2010relational}.
-\subsection{GDL Transformation to core.logic}
+
+
+
+\subsection{GDL Translation to core.logic}
+\subsubsection{Motivation}
+Game Description Language is trivially derived from English. Below are the English and GDL descriptions of legality in Tic-Tac-Toe.
+\begin{lstlisting}[frame=single, caption=The Legal relation for Tic-Tac-Toe expressed in English]
+;It is Legal for player w to mark cell (m,n)
+;if it is true that cell (m,n) is blank and
+;it is true that it is player w's turn to
+;move. If it is X's turn to move, O can only
+;noop. If it is O's turn to move, X can only
+;noop. 
+\end{lstlisting}
+\begin{lstlisting}[frame=single, caption=The Legal relation for Tic-Tac-Toe expressed in GDL]
+(<= (legal ?w (mark ?m ?n))
+    (true (cell ?m ?n b))
+    (true (control ?w)))
+
+(<= (legal X noop)
+    (true (control O)))
+
+(<= (legal O noop)
+    (true (control X)))
+\end{lstlisting}
+
+Similarly, a corresponding core.logic relation can be derived from the GDL description.
+
+\begin{lstlisting}[frame=single, caption=The Legal relation translated into core.logic]
+(defn legal [role move]
+ (conde
+  [(fresh [?w ?m?n]
+    (== role ?w)
+    (== move [:mark ?m ?n])
+    (true [:cell ?m ?n :b])
+    (true [:control ?w]))]
+  [(== role :X)
+   (== move :noop)
+   (true [:control :O])]
+  [(== role :O)
+   (== move :noop)
+   (true [:control :X])]))
+\end{lstlisting}
+
+While the core.logic version is more verbose, each part has a direct correspondence(SP?) to part of the GDL description:
+\begin{itemize}
+\item The relation has an explicit declaration with argument names.
+\item All the reflexive relations at the head of each GDL \textless= block are transformed into a series of unifications with the corresponding GDL arguments. 
+\item All free variables in the GDL relation are now explicitly declared in a core.logic fresh block.
+\item The three separate GDL relations are now combined in a single conde block. In the GDL description, there is an implicit disjunction between the relations. conde is a core.logic disjunction.
+\end{itemize}
+
+\subsubsection{Implementation}
+
+\subsubsection{Results}
+The translation algorithm was tested on four Game Description Language descriptions that can be found on the Stanford Gamemaster website: Tic-Tac-Toe, Chinkook, Chinese Checkers, and Pentago. These games are diverse in factors such as board structure, number of players, types of moves, synchronicity (??) of moves, etc (!!).
 
 \subsection{Monte-Carlo Tree Search}
 
