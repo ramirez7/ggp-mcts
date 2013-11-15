@@ -9,7 +9,7 @@
 \nocopyright
 % Title
 \title{General Game Playing and Monte-Carlo Tree Search}
-\author{Armando Ramirez}
+\author{Armando Ramirez \\ Purdue University, West Lafayette, IN \\ ramirez7@purdue.edu \\ armando.m.ramirez@gmail.com}
 % Body
 \begin{document}
 \maketitle
@@ -21,20 +21,14 @@
 \subsection{Background}
 
 \subsubsection{General Game Playing}
-test \cite{StanfordGGP}
+\cite{StanfordGGP}
 \subsubsection{Monte-Carlo Tree Search}
 
 \subsection{FINNSSON}
 
-test \cite{finnsson2012generalized}
-
 \subsection{LONG}
 
-test \cite{long2010understanding}
-
 \subsection{MC-RAVE}
-
-test \cite{gelly2011monte}
 
 \section{Implementation}
 
@@ -43,9 +37,8 @@ test \cite{gelly2011monte}
 \subsubsection{Clojure}
 
 \subsubsection{core.logic}
-
-test \cite{byrd2010relational}
-
+%FIXME CAN'T LINEBREAK AFTER THIS SUBSUBSECTION
+The primary Clojure library used in the implementation was core.logic, which is a port of the logic programming language miniKanren as formulated by William Byrd in his 2010 PhD thesis \cite{byrd2010relational}.
 \subsection{GDL Transformation to core.logic}
 
 \subsection{Monte-Carlo Tree Search}
@@ -53,6 +46,12 @@ test \cite{byrd2010relational}
 \subsection{Goal Stability Early Cutoff}
 
 \subsection{Future Work}
+
+Of the extensions listed in the critiqued paper, only Finnsson's Goal Stability Early Cutoff extension was incorporated into my Monte-Carlo Tree Search algorithm. Future work would entail implementing a variety of extensions and improvements, including but not limited to UCT, MC-RAVE, Terminal Interval Early Cutoff, and Unexplored Action Urgency. In addition, the game descriptions used from the Stanford Gamemaster website were all for the most part not applicable to the extension implemented, and to some of the extensions not implemented. Future work would examine these extensions in contexts where they are most suited.
+
+The Game Description Language to core.logic transformation algorithm stands to be extremely useful in a variety of contexts. As such, I plan on publishing my work to the appropriate Clojure repositories, such as Leiningen. This would entail a good deal work to make the code publishable, including performing more rigorous testing and writing very thorough documentation.
+
+Finally, the Game Description Language to core.logic transformation algorithm has applications outside of artifical intelligence. It stands to reason that it could be used as the underlying logic of a graphical user interface implementation of a variety of games. Due to the expressivity of Game Description Language, the ability to write the game logic in GDL would vastly speed up the development time of the game engine.
 
 \section{Conclusion}
 
