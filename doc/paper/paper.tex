@@ -1,5 +1,6 @@
 \documentclass[letterpaper]{article}
 % Required Packages
+\frenchspacing
 \usepackage{aaai}
 \usepackage{times}
 \usepackage{helvet}
@@ -9,6 +10,7 @@
 \usepackage{caption}
 \DeclareCaptionFont{white}{ \color{white} }
 \captionsetup[lstlisting]{singlelinecheck=false, margin=0pt, font={bf,footnotesize}}
+\usepackage{parcolumns}
 \setlength{\pdfpagewidth}{8.5in}
 \setlength{\pdfpageheight}{11in}
 \nocopyright
@@ -20,25 +22,26 @@
 \maketitle
 
 \section{Introduction}
-% TODO
+% TODO (unless no room)
 \section{Critique}
 
 \subsection{Background}
 
 \subsubsection{General Game Playing}
-The General Game Playing Competition is an annual competition created and managed by Stanford University in which game-playing agents compete by playing games of which they have no prior knowledge.\cite{StanfordGGP} This means they cannot use any heuristical knowledge (unless they can infer some from the game description) and must use more general methods of game-playing. Games occur with two or more agents communicating synchronously with a Game Master. The Game Master first tells the agents the rules of the game, and then for the rest of the game it is responsible for receiving player input and telling the players the next state of the game. All moves are synchronous, but turn-based games are easily simulated by the game rules requiring all but the active player to pass.
+The General Game Playing Competition is an annual competition created and managed by Stanford University in which game-playing agents compete by playing games of which they have no prior knowledge.\cite{StanfordGGP} This means they cannot use any heuristical knowledge (unless they can infer some from the game description) and must use more general methods of game-playing instead. Games occur with two or more agents communicating synchronously with a Game Master. The Game Master first tells the agents the rules of the game, and then for the rest of the game it is responsible for receiving player input and telling the players the next state of the game. All moves are synchronous, but turn-based games are simulated by the game rules requiring all but the active player to pass.
 
 All the games played at the competition are described in Game Description Language (also known as Game Definition Language.) Games are boiled down to their most general essence when expressed in this language. A game description is composed of a series of relations. While the game can define its own game-specific relations, there are set relations that must be defined for all games. They are listed below, as described on the Stanford General Game Playing website \cite{StanfordGGP}.
+% Remove all this listing crap if I go over-length
 \begin{itemize}
-\item \emph{role(a)} means that a is a role in the game.
-\item \emph{base(p)} means that p is a base proposition in the game.
-\item \emph{input(r,a)} means that a is an action for role r.
-\item \emph{init(p)} means that the proposition p is true in the initial state.
-\item \emph{true(p)} means that the proposition p is true in the current state.
-\item \emph{does(r,a)} means that player r performs action a in the current state.
-\item \emph{next(p)} means that the proposition p is true in the next state.
-\item \emph{legal(r,a)} means it is legal for role r to play action a in the current state.
-\item \emph{goal(r,n)} means that player the current state has utility n for player r.
+\item \emph{role(a)} means that \emph{a} is a role in the game.
+\item \emph{base(p)} means that \emph{p} is a base proposition in the game.
+\item \emph{input(r,a)} means that \emph{a} is an action for role \emph{r}.
+\item \emph{init(p)} means that the proposition \emph{p} is true in the initial state.
+\item \emph{true(p)} means that the proposition \emph{p} is true in the current state.
+\item \emph{does(r,a)} means that player \emph{r} performs action \emph{a} in the current state.
+\item \emph{next(p)} means that the proposition \emph{p} is true in the next state.
+\item \emph{legal(r,a)} means it is legal for role \emph{r} to play action \emph{a} in the current state.
+\item \emph{goal(r,n)} means that player the current state has utility \emph{n} for player \emph{r}.
 \item \emph{terminal} means that the current state is a terminal state.
 \end{itemize}
 
@@ -47,10 +50,10 @@ The true and does relations are in effect inputs. The true relations are inputs 
 \subsubsection{Monte-Carlo Tree Search}
 % TODO
 
-\subsection{FINNSSON}
+\subsection{Generalized Monte-Carlo Tree Search Extensions for General Game Playing}
 
 \subsubsection{Summary}
-% TODO
+This paper presents extensions menat to be optimization for Monte-Carlo Tree Search that apply to any generally-described game.
 
 \subsubsection{Critique}
 % TODO
@@ -81,13 +84,13 @@ The true and does relations are in effect inputs. The true relations are inputs 
 \subsection{Background}
 
 \subsubsection{Clojure}
-The implementation of General Game Playing Monte-Carlo Tree Search presented in this paper was implemented in the programming language Clojure. Clojure is a Lisp dialect that can be compiled to run on the Java Virtual Machine, .NET Common Language Runtime, and JavaScript Virtual Machine. It was chosen for a variety of reasons
+The implementation of General Game Playing Monte-Carlo Tree Search presented in this paper was implemented in the programming language Clojure. Clojure is a Lisp dialect that can be compiled to run on the Java Virtual Machine, .NET Common Language Runtime, or JavaScript Virtual Machine. It was chosen for a variety of reasons:
 \begin{itemize}
 
 \item \emph{Data Structures} Clojure has a rich collection of immutable, persistent data structures including lists, vectors, sets, and maps.
 \item \emph{Libraries} Clojure has multiple libraries suited for the project, namely pattern matching and logic programming libraries.
-\item \emph{Highly Functional} Clojure has a large set of higher-order functions that can operate on any of its collections.
-\item \emph{Homoiconicity} Part of this project involves translating Game Description Language into Clojure. This task would not have been possible in the timespan it was done in in a language that is not code-as-data.
+\item \emph{Highly Functional} Clojure has a large set of higher-order functions that can operate over any of its collections.
+\item \emph{Homoiconicity} Part of this project involves translating Game Description Language into Clojure. This task was only possible to complete in the allotted timespan because Clojure code is data.
 \item \emph{Comfort} On a personal level, I am most comfortable programming in Clojure.
 \end{itemize}
 \subsubsection{core.logic}
@@ -140,7 +143,7 @@ REPL:> (run* [q] (pair-example q))
  [3 0] [3 1] [4 0])
 \end{lstlisting}
 
-This example exposes the under-workings of core.logic: It is, in effect, abstracted search. The user declaratively tells the system what he is looking for, and core.logic performs the search and returns all the solutions it finds. In the context of General Game Playing, these attributes of relations are extremely useful. For example, the legal relation can be used to both generate (via search) all legal moves and check if a move is legal.
+This example exposes the under-workings of core.logic: It is, in effect, abstracted search. The user declaratively tells the system what they are looking for, and core.logic performs the search and returns all the solutions it finds. In the context of General Game Playing, these attributes of relations are extremely useful. For example, the legal relation can be used to both generate (via search) all legal moves and check if a move is legal.
 
 \subsection{GDL Translation to core.logic}
 \subsubsection{Motivation}
@@ -183,15 +186,110 @@ Similarly, a corresponding core.logic relation can be derived from the GDL descr
    (true [:control :X])]))
 \end{lstlisting}
 
-While the core.logic version is more verbose, each part has a direct correspondence(SP?) to part of the GDL description:
+While the core.logic version is more verbose, each part has a direct correspondence to part of the GDL description:
 \begin{itemize}
-\item The relation has an explicit declaration with argument names.
+\item The core.logic relation has an explicit declaration with argument names.
 \item All the reflexive relations at the head of each GDL \textless= block are transformed into a series of unifications with the corresponding GDL arguments. 
 \item All free variables in the GDL relation are now explicitly declared in a core.logic \texttt{fresh} block.
 \item The three separate GDL relations are now combined in a single \texttt{conde} block. In the GDL description, there is an implicit disjunction between the relations, and \texttt{conde} is a core.logic disjunction.
 \end{itemize}
 
+Using this core.logic relation, we can accomplish a variety of useful tasks. The below REPL exchange shows the various outputs of the Legal relation for 3x3 Tic-Tac-Toe in the initial state (the entire board is empty and X's turn to move).
+
+\begin{lstlisting}[frame=single,caption=REPL exchange with the core.logic Legal relation for 3x3 Tic-Tac-Toe in the initial state]
+;; Legality checking
+REPL:> (run* [q] (legal :X [:mark 1 1]))
+(._0) ;; SUCCESS
+REPL:> (run* [q] (legal :O [:mark 1 1]))
+() ;; FAILURE. O cannot mark any square
+
+;; Legal move generation
+REPL:> (run* [q] (legal :X q))
+([:mark 3 3] [:mark 3 2] [:mark 3 1]
+ [:mark 2 3] [:mark 2 2] [:mark 2 1]
+ [:mark 1 3] [:mark 1 2] [:mark 1 1])
+REPL:> (run* [q] (legal :O q))
+(:noop)
+\end{lstlisting}
 \subsubsection{Implementation}
+
+The implementation presented in this paper can take as input any GDL description (inputted as a list of quoted GDL forms) and create as output runnable core.logic relations. The outputted relations are organized in a Clojure map, where keys are the relation name and values are the runnable relations. This map is hereafter known as the games' \emph{environment}.
+
+The environment is used to accomplish multiple necessary tasks:
+
+\begin{itemize}
+\item Relations must be able to reference each other. Because they are read in at runtime, it would be bad practice to use run-time defs.
+\item The true and does relation are not static after initialization. During the playing of the game, both of these relations must be constantly updated.
+\end{itemize}
+
+ In order to accomplish these tasks, each relation takes an addition argument of the environment. Whenever the relation would make a call to another relation, it instead first fetches the relation from the environment and then calls it. This results in the Legal relation shown above now looking like so:
+
+\begin{lstlisting}[frame=single, caption=The Legal relation translated into core.logic]
+(defn legal [env role action]
+ (conde
+  [(fresh [?w ?m?n]
+    (== role ?w)
+    (== action [:mark ?m ?n])
+    ((env :true) [:cell ?m ?n :b])
+    ((env :true) [:control ?w]))]
+  [(== role :X)
+   (== action :noop)
+   ((env :true) [:control :O])]
+  [(== role :O)
+   (== action :noop)
+   ((env :true) [:control :X])]))
+\end{lstlisting}
+
+The translation process is fairly straightforward; however, some key steps must be taken due to the relative vagueness of GDL compared to Clojure.
+\begin{itemize}
+\item \texttt{fresh} variables must be detected in each relation so that they can be explicitly declared. GDL specifies that free variables must start with a question mark, so this task is as simple as walking the syntax and enumerating all symbols that start with \texttt{?}
+\item GDL relations are not explicitly grouped. For example, there are multiple relations with Legal as their head, and it is implicit that all these relations are joined by a logical disjunction. The translation algorithm first groups relations by name before transforming their code.
+\item Similarly to above, the number of arguments is not declared anywhere. This is also trivial to detect. They are also not named, so gensyms are used to name each variable.
+\end{itemize}
+
+After this pre-processing is finished, creating the core.logic relations is as simple as creating code (as Clojure data structures) that represents the relations as a function and then calling \texttt{eval} on that code. The code is created according to the rules exemplified below
+\begin{lstlisting}[frame=single, caption=Reflexive head calls turn into unifications]
+;; Transforming Legal
+(legal ?w (mark ?x ?y))
+;; -~->
+(== role ?w)
+(== move [:mark ?x ?y]
+\end{lstlisting}
+
+\begin{lstlisting}[frame=single,caption=All other relations reference the environment]
+(true (cell 1 1 b))
+;; -~->
+((env :true) [:cell 1 1 :b])
+\end{lstlisting}
+
+\begin{lstlisting}[frame=single,caption=not turns into negation as failure constraint (nafc)]
+(not (line X))
+;; -~->
+(nafc (env :line) X)
+\end{lstlisting}
+
+\begin{lstlisting}[frame=single,caption=TODO]
+(<= (head & args)
+    & tail)
+;; -~->
+(fresh [fresh-vars]
+ (transformed head)
+ (transformed tail))
+\end{lstlisting}
+
+\begin{lstlisting}[frame=single,caption=TODO]
+(relation1)
+(relation2)
+;; ...
+(relationN)
+;; -~->
+(conde
+ [(transformed relation1)]
+ [(transformed relation2)]
+ ;; ...
+ [(transformed relationN)])
+\end{lstlisting} 
+
 % TODO
 % environment
 % collect and transform
@@ -205,7 +303,11 @@ The translation algorithm was tested on four Game Description Language descripti
 \subsection{Monte-Carlo Tree Search}
 
 \subsubsection{Implementation}
-% TODO
+My implementation is rather straightforward. It is modularized such that all the explicit steps discussed in a theoretical discussion of Monte-Carlo Tree Search are present and named in the implementation. To aid in programming this algorithm in Clojure, I used a simpler implementation for 3x3 Tic-Tac-Toe as reference \cite{randomcomp}. Because my implementation must work for any game described in GDL, there are some assumptions that can be made about 3x3 Tic-Tac-Toe that cannot be made in a General Game Playing MCTS agent:
+\begin{itemize}
+\item There can be arbitrary number of players. Therefore, the notion of win, loss, and draw are less relevant. Instead, the raw Goal relation score of each player is used.
+\item There are not necessarily turns. If the game is synchronous, the search tree must expand according to all possible combinations of possible moves by all players.
+\end{itemize}
 
 \subsubsection{Results}
 % TODO
@@ -221,6 +323,7 @@ Below is a code snippet (with some parts redacted for conciseness) of the core d
         (is-goal-stable? goals threshold)
         (>= steps cut)))
      ;; Simulation over
+     ;; Return results
      scores
      ;; Simulation not over.
      ;; Choose random child.
@@ -240,7 +343,7 @@ The Game Description Language to core.logic transformation algorithm stands to b
 Finally, the Game Description Language to core.logic transformation algorithm has applications outside of artifical intelligence. It stands to reason that it could be used as the underlying logic of a graphical user interface implementation of a variety of games. Due to the expressivity of Game Description Language, the ability to write the game logic in GDL would vastly speed up the development time of the game engine.
 
 \section{Conclusion}
-% TODO
+% TODO (unless no room)
 
 % References
 \bibliography{paper}
