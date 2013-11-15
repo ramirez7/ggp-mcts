@@ -26,12 +26,25 @@
 \subsection{Background}
 
 \subsubsection{General Game Playing}
-The General Game Playing Competition is an annual competition created and managed by Stanford University in which game-playing agents compete playing games of which they have no prior knowledge.\cite{StanfordGGP} This means they cannot use any heuristical knowledge (unless they can infer some from the game description) and must use more general methods of game-playing.
+The General Game Playing Competition is an annual competition created and managed by Stanford University in which game-playing agents compete playing games of which they have no prior knowledge.\cite{StanfordGGP} This means they cannot use any heuristical knowledge (unless they can infer some from the game description) and must use more general methods of game-playing. Games occur with two or more agents communicating synchronously with a Game Master. The Game Master first tells the agents the rules of the game, and then for the rest of the game it is responsible for receiving player input and telling the players the next state of the game. All moves are synchronous, but turn-based games are easily simulated by the game rules requiring all but the active player to pass.
 
-All the games played at the competition are described in Game Description Language (also known as Game Definition Language.) Games are boiled down to their most general essence when expressed in this language. A game description is composed of a series of relations. While the game can define its own game-specific relations, there are set relations that must be defined for all games. They are listed below, as described on the Stanford General Game Playing website \cite{StanfordGGP}
+All the games played at the competition are described in Game Description Language (also known as Game Definition Language.) Games are boiled down to their most general essence when expressed in this language. A game description is composed of a series of relations. While the game can define its own game-specific relations, there are set relations that must be defined for all games. They are listed below, as described on the Stanford General Game Playing website \cite{StanfordGGP}.
 \begin{itemize}
-\item 
+%TODO: italicize relations
+\item role(a) means that a is a role in the game.
+\item base(p) means that p is a base proposition in the game.
+\item input(r,a) means that a is an action for role r.
+\item init(p) means that the proposition p is true in the initial state.
+\item true(p) means that the proposition p is true in the current state.
+\item does(r,a) means that player r performs action a in the current state.
+\item next(p) means that the proposition p is true in the next state.
+\item legal(r,a) means it is legal for role r to play action a in the current state.
+\item goal(r,n) means that player the current state has utility n for player r.
+\item terminal means that the current state is a terminal state.
 \end{itemize}
+
+The true and does relations are in effect inputs. The true relations are inputs to the agents from the Game Master, and the does relation is the input from the agents to the Game Master. Therefore, all of the above relations except those two should be defined (most likely in terms of true and does) in the GDL description of a game.
+
 \subsubsection{Monte-Carlo Tree Search}
 
 \subsection{FINNSSON}
@@ -102,6 +115,8 @@ REPL:> (run* [q] (pair-example q))
  [3 0] [3 1] [4 0])
 \end{lstlisting}
 
+This example exposes the under-workings of core.logic: It is, in effect, abstracted search. The user declaratively tells the system what he is looking for, and core.logic performs the search and returns all the solutions it finds. In the context of General Game Playing, these attributes of relations are extremely useful. For example, the legal relation can be used to both generate (via search) all legal moves and check if a move is legal.
+
 \subsection{GDL Translation to core.logic}
 \subsubsection{Motivation}
 Game Description Language is trivially derived from English. Below are the English and GDL descriptions of legality in Tic-Tac-Toe.
@@ -128,18 +143,18 @@ Game Description Language is trivially derived from English. Below are the Engli
 Similarly, a corresponding core.logic relation can be derived from the GDL description.
 
 \begin{lstlisting}[frame=single, caption=The Legal relation translated into core.logic]
-(defn legal [role move]
+(defn legal [role action]
  (conde
   [(fresh [?w ?m?n]
     (== role ?w)
-    (== move [:mark ?m ?n])
+    (== action [:mark ?m ?n])
     (true [:cell ?m ?n :b])
     (true [:control ?w]))]
   [(== role :X)
-   (== move :noop)
+   (== action :noop)
    (true [:control :O])]
   [(== role :O)
-   (== move :noop)
+   (== action :noop)
    (true [:control :X])]))
 \end{lstlisting}
 
@@ -159,8 +174,25 @@ The translation algorithm was tested on four Game Description Language descripti
 \subsection{Monte-Carlo Tree Search}
 
 \subsection{Goal Stability Early Cutoff}
+Due to the modular nature of the Monte-Carlo Tree Search code, it was easy to implement the Goal Stability Early Cutoff extension \cite{finnsson2012generalized}. In the playout function, which originally just randomly plays a game to completely, a list of the result of the Goal relation is stored for each player.
 
-\subsection{Future Work}
+Below is a code snippet (with some parts redacted for conciseness) of the core decision making process implemented.
+\begin{lstlisting}[frame=single,caption=Clojure implementation of Goal Stability Early Cutoff]
+(if (or (terminal? env)
+        (and use-early-cutoff?
+        (is-goal-stable? goals threshold)
+        (>= steps cut)))
+     ;; Simulation over
+     scores
+     ;; Simulation not over.
+     ;; Choose random child.
+     (recur (rand-nth (gen-children env)) 
+            next-goals (inc steps)))
+\end{lstlisting}
+
+The implementation did not break any game that was played using it; however, none of the games that were used for testing had a fine-grained enough Goal relation for the Goal Stability Early Cutoff extension to frequently (or sometimes ever) come into effect.
+
+\section{Future Work}
 
 Of the extensions listed in the critiqued paper, only Finnsson's Goal Stability Early Cutoff extension was incorporated into my Monte-Carlo Tree Search algorithm. Future work would entail implementing a variety of extensions and improvements, including but not limited to UCT, MC-RAVE, Terminal Interval Early Cutoff, and Unexplored Action Urgency. In addition, the game descriptions used from the Stanford Gamemaster website were all for the most part not applicable to the extension implemented, and to some of the extensions not implemented. Future work would examine these extensions in contexts where they are most suited.
 
