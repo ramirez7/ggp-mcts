@@ -225,7 +225,7 @@ Similarly, a corresponding core.logic relation can be derived from the GDL descr
 \begin{lstlisting}[frame=single, caption=The Legal relation translated into core.logic]
 (defn legal [role action]
  (conde
-  [(fresh [?w ?m?n]
+  [(fresh [?w ?m ?n]
     (== role ?w)
     (== action [:mark ?m ?n])
     (true [:cell ?m ?n :b])
@@ -274,22 +274,22 @@ The environment is used to accomplish multiple necessary tasks:
 \item The true and does relation are not static after initialization. During the playing of the game, both of these relations must be constantly updated.
 \end{itemize}
 
- In order to accomplish these tasks, each relation takes an addition argument of the environment. Whenever the relation would make a call to another relation, it instead first fetches the relation from the environment and then calls it. This results in the Legal relation shown above now looking like so:
+ In order to accomplish these tasks, each relation takes an additional argument of the environment. Whenever the relation would make a call to another relation, it instead first fetches the relation from the environment and then calls it. This results in the Legal relation shown above now looking like so:
 
 \begin{lstlisting}[frame=single, caption=The Legal relation translated into core.logic]
 (defn legal [env role action]
  (conde
-  [(fresh [?w ?m?n]
+  [(fresh [?w ?m ?n]
     (== role ?w)
     (== action [:mark ?m ?n])
-    ((env :true) [:cell ?m ?n :b])
-    ((env :true) [:control ?w]))]
+    ((env :true) env [:cell ?m ?n :b])
+    ((env :true) env [:control ?w]))]
   [(== role :X)
    (== action :noop)
-   ((env :true) [:control :O])]
+   ((env :true) env [:control :O])]
   [(== role :O)
    (== action :noop)
-   ((env :true) [:control :X])]))
+   ((env :true) env [:control :X])]))
 \end{lstlisting}
 
 The translation process is fairly straightforward; however, some key steps must be taken due to the relative vagueness of GDL compared to Clojure.
@@ -305,19 +305,19 @@ After this pre-processing is finished, creating the core.logic relations is as s
 (legal ?w (mark ?x ?y))
 ;; -~->
 (== role ?w)
-(== move [:mark ?x ?y]
+(== move [:mark ?x ?y])
 \end{lstlisting}
 
 \begin{lstlisting}[frame=single,caption=All other relations reference the environment]
 (true (cell 1 1 b))
 ;; -~->
-((env :true) [:cell 1 1 :b])
+((env :true) env [:cell 1 1 :b])
 \end{lstlisting}
 
 \begin{lstlisting}[frame=single,caption=not turns into negation as failure constraint (nafc)]
 (not (line X))
 ;; -~->
-(nafc (env :line) X)
+(nafc (env :line) env :X)
 \end{lstlisting}
 
 \begin{lstlisting}[frame=single,caption={\textless= relations are joined in a fresh block}]
