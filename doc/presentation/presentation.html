@@ -15,15 +15,6 @@ class: center, middle
 # General Game Playing and Monte Carlo Tree Search
 ### Armando Ramirez
 ---
-
-# Agenda
-
-1. Introduction
-2. Deep-dive
-3. ...
-
----
-
 class: center, middle
 
 # Paper Critique
@@ -69,27 +60,61 @@ class: center, middle
 
 * *Terminal Interval Early Cutoff* If a game tends to terminate in a certain interval of turns, 
 
-* *Unexplored Action Urgency*
+* *Unexplored Action Urgency* "Exploit the fringe" by not always exploring all children
 
 ### Critique
 
+* Took great care to make all extensions use no game-specific knowledge
+
+* Some extensions are not applicable for many games on Stanford's website (such as Tic-Tac-Toe and even Chinese Checkers)
+
+* No assumptions about game are made, but usefulness is determined by game description.
 
 ###### Finnsson, H. 2012. Generalized monte-carlo tree search extensions for general game playing. In AAAI.
 ---
 # Paper Critique
 ## Understanding the Success of Perfect Information Monte Carlo Sampling in Game Tree Search
+
 ### Summary
 
+* Identifies three factors that affect MCTS's effectiveness in imperfect information games:
+
+* *Leaf Correlation* How much control a player has over their fate at a certain point in the game
+
+* *Bias* Whether or not a game inherently favors a player
+
+* *Disambiguation Factor* In imperfect information games, how much the possibilities shrink with each revelation
+
 ### Critique
+
+* Thorough testing of theory, with both synthetic game trees and actual games.
+
+* Could be very applicable to GDL-II, which includes stochastic and imperfect information games
+
+* MCTS can be exploited by an opponent
 
 ###### Long, J. R.; Sturtevant, N. R.; Buro, M.; and Furtak, T. 2010.	Understanding the success of perfect information monte carlo sampling in game tree search. In AAAI.
 ---
 # Paper Critique
 ## Monte-Carlo tree search and rapid action value estimation in computer Go
+
 ### Summary
+
+* Exhaustive mathematical explanation of Monte-Carlo Tree Search and related concepts and algorithms
+
+* Proposes two extensions
+
+* *Rapid Action Value Estimation (RAVE)* Speeds up MCTS vastly thanks to parallel tree nodes sharing information, but reduces effectiveness
+
+* *MC-RAVE* Combines RAVE with more Monte-Carlo simulations in order to increase effectiveness while retaining speed
 
 ### Critique
 
+* Only applicable to computer Go
+
+* Results were convincingly displayed
+
+* While not directly applicable to my implementation (GGP), the mathematical explanation still was helpful
 
 ###### Gelly, S., and Silver, D. 2011. Monte-carlo tree search and rapid action value estimation in computer go. Artificial In- telligence 175(11):1856–1875.
 ---
@@ -322,9 +347,9 @@ REPL:> (run* [q] (legal :O q))
    :body (quote ((<= (legal ?w (mark ?m ?n))
     	             (true (cell ?m ?n b))
     	             (true (control ?w)))
-  	            (<= (legal X noop)
+  	           (<= (legal X noop)
  	      	      (true (control O)))
-        		  (<= (legal O noop)
+		         (<= (legal O noop)
        		      (true (control X)))))}
  ;; etc
 }
@@ -400,7 +425,7 @@ REPL:> (run* [q] (legal :O q))
 ---
 # Implementation: Goal-Stability Early Cutoff
 ## Pseudo-code from the article
-
+<img src = "goalpseudo.png" style="height:auto; width:auto; max-width:1000px; max-height:1000px;">
 ## Snippet of Clojure code
 ```Clojure
 (if (or (terminal? env)
