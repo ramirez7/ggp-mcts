@@ -30,23 +30,23 @@ class: center, middle
 
 ---
 # Background: Game Description Language
-* *role(a)* means that a is a role in the game.
+* *role(a)* means that *a* is a role in the game.
 
-* *base(p)* means that p is a base proposition in the game.
+* *base(p)* means that *p* is a base proposition in the game.
 
-* *input(r,a)* means that a is an action for role r.
+* *input(r,a)* means that *a* is an action for role *r*.
 
-* *init(p)* means that the proposition p is true in the initial state.
+* *init(p)* means that the proposition *p* is true in the initial state.
 
-* *true(p)* means that the proposition p is true in the current state.
+* *true(p)* means that the proposition *p* is true in the current state.
 
-* *does(r,a)* means that player r performs action a in the current state.
+* *does(r,a)* means that player *r* performs action *a* in the current state.
 
-* *next(p)* means that the proposition p is true in the next state.
+* *next(p)* means that the proposition *p* is true in the next state.
 
-* *legal(r,a)* means it is legal for role r to play action a in the current state.
+* *legal(r,a)* means it is legal for role *r* to play action *a* in the current state.
 
-* *goal(r,n)* means that player the current state has utility n for player r.
+* *goal(r,n)* means that player the current state has utility *n* for player *r*.
 
 * *terminal* means that the current state is a terminal state.
 ---
@@ -436,7 +436,7 @@ REPL:> (run* [q] (legal :O q))
 * ### A functional Game Description Language to Clojure core.logic translator 
 * ### A functional Monte-Carlo Tree Search implementation in Clojure using the output of my GDL->core.logic translator
 * ### An implemented extension to MCTS from a critiqued paper
-<!--http://gnab.github.io/remark/downloads/remark-0.5.9.min.j-->
+<!--http://gnab.github.io/remark/downloads/remark-0.5.9.min.js-->
     </textarea>
     <script src="remark-0.5.9.min.js" type="text/javascript">
     </script>
