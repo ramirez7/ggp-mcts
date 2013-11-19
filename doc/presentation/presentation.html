@@ -23,7 +23,13 @@ class: center, middle
 3. ...
 
 ---
-# Game Description Language
+
+class: center, middle
+
+# Paper Critique
+
+---
+# Background: Game Description Language
 * *role(a)* means that a is a role in the game.
 
 * *base(p)* means that p is a base proposition in the game.
@@ -44,23 +50,62 @@ class: center, middle
 
 * *terminal* means that the current state is a terminal state.
 ---
-# Monte-Carlo Tree Search
+# Background: Monte-Carlo Tree Search
 <img src = "mctsfigure.png" style="height:auto; width:auto; max-width:1000px; max-height:1000px;">
 
-* *Selection*
-* *Playout*
-* *Expansion*
-* *Back-Propogation*
+* *Selection* Choose amongst next-states
+* *Playout* Randomly play a game to completion, noting the result
+* *Expansion* The tree is typically grown one state at a time
+* *Back-Propogation* Results of each state's simulation must be propogated to all of its ancestors
 ---
-# Papers
-## 
+# Paper Critique
+## Generalized Monte-Carlo Tree Search Extensions for General Game Playing
+### Summary
+* Multiple extensions for MCTS are proposed
+
+* All the extensions make no game-specific assumption so that they will be applicable to general game playing.
+
+* *Goal Stability Early Cutoff* If a simulation seems to be reasonably trending towards a conclusion, terminate early
+
+* *Terminal Interval Early Cutoff* If a game tends to terminate in a certain interval of turns, 
+
+* *Unexplored Action Urgency*
+
+### Critique
+
+
+###### Finnsson, H. 2012. Generalized monte-carlo tree search extensions for general game playing. In AAAI.
 ---
-# core.logic: Functions vs Relations
-## The plus function
+# Paper Critique
+## Understanding the Success of Perfect Information Monte Carlo Sampling in Game Tree Search
+### Summary
+
+### Critique
+
+###### Long, J. R.; Sturtevant, N. R.; Buro, M.; and Furtak, T. 2010.	Understanding the success of perfect information monte carlo sampling in game tree search. In AAAI.
+---
+# Paper Critique
+## Monte-Carlo tree search and rapid action value estimation in computer Go
+### Summary
+
+### Critique
+
+
+###### Gelly, S., and Silver, D. 2011. Monte-carlo tree search and rapid action value estimation in computer go. Artificial In- telligence 175(11):1856–1875.
+---
+class: center, middle
+
+# Implementation
+
+---
+# Background: core.logic 
+##Functions vs Relations
+### The plus function
 ```
 REPL:> (+ 2 3)
+5
 ```
-## The plus relation
+### The plus relation
 ```
 REPL:> (run* [q] (+ 2 3 q))
 (5)
@@ -76,58 +121,49 @@ REPL:> (run* [q] (+ 2 3 7))
 * The (run* [q] RELATION) macro means “give me all the values of q such that the relation (with q substituted in accordingly) succeeds”
 
 ---
-# core.logic: More complex example
-## English
-p is a pair of whole numbers (x,y) such that x + y = 3 or x+y = 4
+# Background: core.logic
+## More complex example
+### English
+p is a pair of whole numbers (x,y) such that x + y = 3 or x + y = 4
 
 ---
-# core.logic: More complex example
-## English
-p is a pair of whole numbers (x,y) such that x + y = 3 or x+y = 4
-## core.logic
+# Background: core.logic
+## More complex example
+### English
+p is a pair of whole numbers (x,y) such that x + y = 3 or x + y = 4
+### core.logic
 ```Clojure
 (defn pair-example [p]
 ```
 ---
-# core.logic: More complex example
-## English
-p is a pair of whole numbers (x,y) such that x + y = 3 or x+y = 4
-## core.logic
-```Clojure
-(defn pair-example [p]
-  (fresh [x y]
-    (== [x y] p)
-```
----
-# core.logic: More complex example
-## English
-p is a pair of whole numbers (x,y) such that x + y = 3 or x+y = 4
-## core.logic
+# Background: core.logic
+## More complex example
+### English
+p is a pair of whole numbers (x,y) such that x + y = 3 or x + y = 4
+### core.logic
 ```Clojure
 (defn pair-example [p]
   (fresh [x y]
     (== [x y] p)
-    (in x y (interval 0 Infinity))
 ```
 ---
-# core.logic: More complex example
-## English
-p is a pair of whole numbers (x,y) such that x + y = 3 or x+y = 4
-## core.logic
+# Background: core.logic
+## More complex example
+### English
+p is a pair of whole numbers (x,y) such that x + y = 3 or x + y = 4
+### core.logic
 ```Clojure
 (defn pair-example [p]
   (fresh [x y]
     (== [x y] p)
     (in x y (interval 0 Infinity))
-    (conde
-      [(+ x y 3)]
-      [(+ x y 4)])))
 ```
 ---
-# core.logic: More complex example
-## English
-p is a pair of whole numbers (x,y) such that x + y = 3 or x+y = 4
-## core.logic
+# Background: core.logic
+## More complex example
+### English
+p is a pair of whole numbers (x,y) such that x + y = 3 or x + y = 4
+### core.logic
 ```Clojure
 (defn pair-example [p]
   (fresh [x y]
@@ -137,7 +173,22 @@ p is a pair of whole numbers (x,y) such that x + y = 3 or x+y = 4
       [(+ x y 3)]
       [(+ x y 4)])))
 ```
-## It works!
+---
+# Background: core.logic
+## More complex example
+### English
+p is a pair of whole numbers (x,y) such that x + y = 3 or x + y = 4
+### core.logic
+```Clojure
+(defn pair-example [p]
+  (fresh [x y]
+    (== [x y] p)
+    (in x y (interval 0 Infinity))
+    (conde
+      [(+ x y 3)]
+      [(+ x y 4)])))
+```
+### It works!
 ```
 REPL:> (run* [q] (pair-example [0 3]))
 (._0) ;; SUCCESS
@@ -363,7 +414,7 @@ REPL:> (run* [q] (legal :O q))
 # Future Work
 * ###Thoroughly test and refactor some of the design in order to publish code
 
-* ###core.typed could be a helpful option to more rigorously define things
+* ###core.typed could be a helpful option for more rigor
 
 * ###Support GDL-II
 
@@ -371,12 +422,17 @@ REPL:> (run* [q] (legal :O q))
 
 * ###Implement a variety of other extensions to GGP MCTS
 
+* ###Optimze my MCTS
+
+* ###Implement a "timeout" options for MCTS
+
 ---
 # Conclusion
 
 ## Today I have presented
+* ### An overview of General Game Playing and Monte-Carlo Tree Search
 * ### Critiques of three recent papers on Monte-Carlo Tree Search
-* ### A simple introduction to logic programming with core.logic
+* ### A simple introduction to logic programming with Clojure core.logic
 * ### A functional Game Description Language to Clojure core.logic translator 
 * ### A functional Monte-Carlo Tree Search implementation in Clojure using the output of my GDL->core.logic translator
 * ### An implemented extension to MCTS from a critiqued paper
